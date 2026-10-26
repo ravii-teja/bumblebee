@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <linearGradient id="cleanFilter" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F8FAFC" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bgGrad)" />
+  <path d="M 50,50 L 750,50 L 700,550 L 100,550 Z" fill="#090D15" stroke="#1E293B" stroke-width="2" />
+
+  <!-- Lower Airbox Tray -->
+  <rect x="220" y="220" width="360" height="260" rx="16" fill="#0F172A" stroke="#334155" stroke-width="3" />
+
+  <!-- Fresh OEM Filter Element (17801-F0050) Seated -->
+  <rect x="240" y="240" width="320" height="220" rx="10" fill="url(#cleanFilter)" stroke="#10B981" stroke-width="4" />
+  
+  <!-- Crisp Pleats -->
+  <line x1="270" y1="240" x2="270" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+  <line x1="300" y1="240" x2="300" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+  <line x1="330" y1="240" x2="330" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+  <line x1="360" y1="240" x2="360" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+  <line x1="390" y1="240" x2="390" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+  <line x1="420" y1="240" x2="420" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+  <line x1="450" y1="240" x2="450" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+  <line x1="480" y1="240" x2="480" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+  <line x1="510" y1="240" x2="510" y2="460" stroke="#CBD5E1" stroke-width="2.5" />
+
+  <!-- OEM Gasket Seal Highlight -->
+  <rect x="236" y="236" width="328" height="228" rx="12" fill="none" stroke="#10B981" stroke-width="2" stroke-dasharray="8 4" />
+  <text x="400" y="350" font-family="'Inter', sans-serif" font-weight="700" font-size="16" fill="#0F172A" text-anchor="middle">NEW ELEMENT SEATED FLUSH</text>
+  <text x="400" y="375" font-family="'Inter', sans-serif" font-weight="600" font-size="12" fill="#047857" text-anchor="middle">Toyota Genuine 17801-F0050</text>
+
+  <rect x="260" y="520" width="280" height="36" rx="8" fill="#1E293B" stroke="#10B981" stroke-width="1.5" />
+  <text x="400" y="543" font-family="'Inter', sans-serif" font-weight="600" font-size="13" fill="#10B981" text-anchor="middle">STEP 5: NEW FILTER SEATED</text>
+</svg>

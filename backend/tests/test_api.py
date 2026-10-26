@@ -1,0 +1,110 @@
+"""Automated tests for MUSE FIELD API & state machine."""
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.core.safety_guard import SafetyGuard
+from app.mock_data.rav4_data import RAV4_COMPONENTS
+
+client = TestClient(app)
+
+
+def test_health_check():
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert "Meta Muse Spark" in data["models"]["reasoning"]
+
+
+def test_session_lifecycle_and_verification():
+    # 1. Create session
+    res = client.post("/api/v1/sessions", json={"vehicle_id": "toyota_rav4_2022", "procedure_id": "rav4_engine_air_filter"})
+    assert res.status_code == 200
+    session_data = res.json()
+    session_id = session_data["session_id"]
+    assert session_data["current_step_number"] == 1
+
+    # 2. Identify components
+    id_res = client.post("/api/v1/vision/identify", json={"session_id": session_id})
+    assert id_res.status_code == 200
+    components = id_res.json()
+    assert len(components) >= 4
+    airbox = next((c for c in components if c["component_id"] == "air_cleaner_assembly"), None)
+    assert airbox is not None
+    assert len(airbox["polygon_points"]) > 0
+
+    # 3. Verify Step 1
+    verify_res = client.post("/api/v1/vision/verify", json={"session_id": session_id, "step_number": 1})
+    assert verify_res.status_code == 200
+    verify_data = verify_res.json()
+    assert verify_data["success"] is True
+    assert verify_data["verification"]["status"] == "VERIFIED"
+    assert verify_data["session"]["current_step_number"] == 2
+
+    # 4. Fetch parts
+    parts_res = client.get("/api/v1/parts?vehicle_id=toyota_rav4_2022")
+    assert parts_res.status_code == 200
+    parts = parts_res.json()
+    assert len(parts) >= 2
+    oem_part = next((p for p in parts if p["part_number"] == "17801-F0050"), None)
+    assert oem_part is not None
+    assert oem_part["verified_fitment"] is True
+
+
+def test_safety_guard():
+    # High voltage cable or brake should trigger safety guard
+    brake_comp = next((c for c in RAV4_COMPONENTS if "brake" in c.name.lower()), None)
+    assert brake_comp is not None
+    safe, warning = SafetyGuard.evaluate_component_safety(brake_comp)
+    assert safe is False
+    assert "SAFETY SHIELD ACTIVE" in warning
+
+
+def test_multimodal_conversation_and_solution_search():
+    # 1. Create clean standby session
+    res = client.post("/api/v1/sessions", json={"vehicle_id": "generic_vehicle", "procedure_id": "general_inspection"})
+    assert res.status_code == 200
+    session_id = res.json()["session_id"]
+
+    # 2. Camera scan turn
+    scan_turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "point camera at vehicle"
+    })
+    assert scan_turn.status_code == 200
+    data1 = scan_turn.json()
+    assert data1["phase"] == "CONFIRM_MAKE"
+    assert "detected" in data1["text"].lower()
+
+    # 3. Model & year input turn
+    model_turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "2021 Honda Civic"
+    })
+    assert model_turn.status_code == 200
+    data2 = model_turn.json()
+    assert data2["phase"] == "ASK_ISSUE"
+    assert "2021 Honda Civic" in data2["text"]
+
+    # 4. Issue description input turn (chat / voice / image)
+    issue_turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "Engine hesitating and sluggish under throttle with low mpg"
+    })
+    assert issue_turn.status_code == 200
+    data3 = issue_turn.json()
+    assert data3["phase"] == "ACTIVE_REPAIR"
+    assert "Honda" in data3["text"]
+    assert "Step 1" in data3["text"]
+    assert "Wireframe Overlay Active" in data3["text"]
+
+    # 5. Next step progression
+    step_turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "next step"
+    })
+    assert step_turn.status_code == 200
+    data4 = step_turn.json()
+    assert data4["phase"] == "ACTIVE_REPAIR"
+    assert "Step 2" in data4["text"]
+

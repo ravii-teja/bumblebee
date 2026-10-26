@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="100%" height="100%">
+  <defs>
+    <radialGradient id="envLight" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#1A2234" />
+      <stop offset="60%" stop-color="#0E131F" />
+      <stop offset="100%" stop-color="#07090E" />
+    </radialGradient>
+    <linearGradient id="hoodGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2D3748" />
+      <stop offset="100%" stop-color="#1A202C" />
+    </linearGradient>
+    <linearGradient id="grilleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient Environment -->
+  <rect width="1200" height="800" fill="url(#envLight)" />
+
+  <!-- Vehicle Silhouette Frontal View (Clean, No Text) -->
+  <g transform="translate(100, 100)">
+    <!-- Windshield & Roof Outline -->
+    <path d="M 240,160 L 320,60 L 680,60 L 760,160 Z" fill="#0A0F1D" stroke="#1E293B" stroke-width="2" />
+    <!-- Hood -->
+    <path d="M 220,160 L 780,160 L 860,280 L 140,280 Z" fill="url(#hoodGrad)" stroke="#334155" stroke-width="2" />
+    <!-- Character Lines on Hood -->
+    <path d="M 340,160 L 310,270" stroke="#4A5568" stroke-width="2" />
+    <path d="M 660,160 L 690,270" stroke="#4A5568" stroke-width="2" />
+
+    <!-- Front Bumper & Grille Assembly -->
+    <path d="M 120,280 L 880,280 L 840,540 L 160,540 Z" fill="#171F2D" stroke="#2D3748" stroke-width="3" />
+    <path d="M 280,310 L 720,310 L 690,490 L 310,490 Z" fill="url(#grilleGrad)" stroke="#1F2937" stroke-width="2" />
+
+    <!-- Headlights -->
+    <path d="M 150,290 L 270,300 L 250,350 L 130,320 Z" fill="#38BDF8" opacity="0.6" />
+    <path d="M 850,290 L 730,300 L 750,350 L 870,320 Z" fill="#38BDF8" opacity="0.6" />
+
+    <!-- Minimalist Oval Emblem Placeholder (Toyota Grille Center) -->
+    <ellipse cx="500" cy="360" rx="36" ry="24" fill="none" stroke="#CBD5E1" stroke-width="4" />
+    <ellipse cx="500" cy="354" rx="20" ry="12" fill="none" stroke="#CBD5E1" stroke-width="3" />
+    <ellipse cx="500" cy="366" rx="14" ry="16" fill="none" stroke="#CBD5E1" stroke-width="3" />
+  </g>
+</svg>

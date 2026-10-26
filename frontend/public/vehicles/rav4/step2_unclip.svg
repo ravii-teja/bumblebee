@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <linearGradient id="boxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bgGrad)" />
+  <path d="M 50,50 L 750,50 L 700,550 L 100,550 Z" fill="#090D15" stroke="#1E293B" stroke-width="2" />
+  
+  <!-- Airbox Assembly -->
+  <g id="step2_housing">
+    <rect x="220" y="140" width="360" height="340" rx="20" fill="url(#boxGrad)" stroke="#F59E0B" stroke-width="3" />
+    <text x="400" y="200" font-family="'Inter', sans-serif" font-weight="700" font-size="20" fill="#F8FAFC" text-anchor="middle">AIR CLEANER HOUSING</text>
+    <text x="400" y="230" font-family="'Inter', sans-serif" font-weight="400" font-size="13" fill="#F59E0B" text-anchor="middle">Clips Disengaged - Seam Free</text>
+
+    <!-- Structural Ribs -->
+    <line x1="260" y1="280" x2="540" y2="280" stroke="#334155" stroke-width="4" />
+    <line x1="260" y1="340" x2="540" y2="340" stroke="#334155" stroke-width="4" />
+    <line x1="260" y1="400" x2="540" y2="400" stroke="#334155" stroke-width="4" />
+
+    <!-- Latches in RELEASED / DROPPED Position (Step 2) -->
+    <g transform="translate(600, 260) rotate(45)">
+      <rect x="0" y="0" width="22" height="45" rx="5" fill="#CBD5E1" stroke="#F59E0B" stroke-width="2.5" />
+      <circle cx="11" cy="22" r="4" fill="#EF4444" />
+    </g>
+    <g transform="translate(600, 390) rotate(45)">
+      <rect x="0" y="0" width="22" height="45" rx="5" fill="#CBD5E1" stroke="#F59E0B" stroke-width="2.5" />
+      <circle cx="11" cy="22" r="4" fill="#EF4444" />
+    </g>
+
+    <!-- Seam Gap Warning Line -->
+    <line x1="575" y1="160" x2="575" y2="460" stroke="#F59E0B" stroke-width="3" stroke-dasharray="6 6" />
+  </g>
+
+  <rect x="280" y="520" width="240" height="36" rx="8" fill="#1E293B" stroke="#F59E0B" stroke-width="1.5" />
+  <text x="400" y="543" font-family="'Inter', sans-serif" font-weight="600" font-size="13" fill="#F59E0B" text-anchor="middle">STEP 2: CLAMPS RELEASED</text>
+</svg>
