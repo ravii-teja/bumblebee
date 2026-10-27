@@ -1,4 +1,4 @@
-"""FastAPI Main Application Entrypoint for MUSE FIELD."""
+"""FastAPI Main Application Entrypoint for Bumblebee."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.sessions import router as sessions_router
@@ -9,8 +9,8 @@ from app.api.v1.procedures import router as procedures_router
 from app.api.v1.conversation import router as conversation_router
 
 app = FastAPI(
-    title="MUSE FIELD — AI Field Engineer API",
-    description="Backend orchestration engine for Meta Muse Spark & SAM 3.1 Automotive Field Repair",
+    title="Bumblebee — AI Field Engineer API",
+    description="Backend orchestration engine for Bumblebee Physical-AI Automotive Field Repair",
     version="1.0.0"
 )
 
@@ -33,10 +33,12 @@ app.include_router(conversation_router, prefix="/api/v1")
 
 
 @app.get("/health")
+@app.get("/api/health")
+@app.get("/api/v1/health")
 def health_check():
     return {
         "status": "healthy",
-        "service": "MUSE FIELD Orchestration Core",
+        "service": "Bumblebee Orchestration Core",
         "models": {
             "reasoning": "Meta Muse Spark / Llama 3.2 Vision",
             "segmentation": "SAM 3.1"

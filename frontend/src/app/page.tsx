@@ -12,9 +12,10 @@ import { VerificationBanner } from "@/components/hud/VerificationBanner";
 import { PartsDrawer } from "@/components/parts/PartsDrawer";
 import { EvidenceModal } from "@/components/evidence/EvidenceModal";
 import { SessionAuditModal } from "@/components/evidence/SessionAuditModal";
-import { Sparkles, Volume2, VolumeX, FileText } from "lucide-react";
+import { BumblebeeBrandBadge } from "@/components/hud/BumblebeeBrandBadge";
+import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen } from "lucide-react";
 
-export default function MuseFieldChamber() {
+export default function BumblebeeChamber() {
   const [session, setSession] = useState<RepairSession | null>(null);
   const [components, setComponents] = useState<ComponentObservation[]>([]);
   const [selectedComponent, setSelectedComponent] = useState<ComponentObservation | null>(null);
@@ -204,16 +205,17 @@ export default function MuseFieldChamber() {
 
   return (
     <main
-      id="muse-field-chamber"
+      id="bumblebee-field-chamber"
       style={{
         position: "relative",
         width: "100vw",
-        height: "100vh",
+        height: "100dvh",
+        minHeight: "100dvh",
         backgroundColor: "#07090D",
         overflow: "hidden"
       }}
     >
-      {/* 1. Fullscreen Camera Viewport with Subtle Blueprint Wireframe Background */}
+      {/* 1. Fullscreen Camera Viewport with Blueprint Wireframe Background */}
       <CameraViewport
         videoRef={videoRef}
         hasCamera={hasCamera}
@@ -225,77 +227,163 @@ export default function MuseFieldChamber() {
         useSimulation={!hasCamera}
       />
 
-      {/* 2. Single Minimalist Top Instruction Banner */}
-      <div
+      {/* 2. Responsive Bumblebee Top Navigation Header */}
+      <header
+        id="bumblebee-top-bar"
         style={{
           position: "absolute",
-          top: "24px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 25,
+          top: "max(12px, env(safe-area-inset-top))",
+          left: "max(12px, env(safe-area-inset-left))",
+          right: "max(12px, env(safe-area-inset-right))",
+          zIndex: 30,
           display: "flex",
           alignItems: "center",
-          gap: "10px",
-          pointerEvents: "auto"
+          justifyContent: "space-between",
+          gap: "8px",
+          pointerEvents: "none"
         }}
       >
+        {/* Top-Left: Bumblebee Brand Badge */}
+        <div style={{ pointerEvents: "auto", flexShrink: 0 }}>
+          <BumblebeeBrandBadge
+            vehicleText={
+              session.vehicle_profile.model && session.vehicle_profile.model !== "General Vehicle"
+                ? `${session.vehicle_profile.year || 2022} ${session.vehicle_profile.make} ${session.vehicle_profile.model}`
+                : undefined
+            }
+            isLive={hasCamera || true}
+          />
+        </div>
+
+        {/* Top-Center: Adaptive Instruction Pill */}
         <div
           className="glass-panel"
           style={{
             display: "flex",
             alignItems: "center",
             gap: "8px",
-            padding: "8px 18px",
+            padding: "8px 16px",
             borderRadius: "var(--radius-pill)",
-            fontSize: "13px",
+            fontSize: "clamp(11px, 2.2vw, 13px)",
             fontWeight: 600,
             color: "#F8FAFC",
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)"
+            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
+            pointerEvents: "auto",
+            maxWidth: "min(360px, 42vw)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap"
           }}
         >
-          <Sparkles size={14} color="var(--accent-cyan)" />
-          <span>{getTopInstruction()}</span>
+          <Sparkles size={14} color="var(--bumblebee-yellow)" style={{ flexShrink: 0 }} />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {getTopInstruction()}
+          </span>
         </div>
 
-        {/* Mute Voice Toggle */}
-        <button
-          onClick={() => setIsTtsMuted((m) => !m)}
-          className="glass-panel"
-          title={isTtsMuted ? "Unmute Voice" : "Mute Voice"}
+        {/* Top-Right: Quick Actions (Parts, Manual, Voice, Dossier) */}
+        <div
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            color: isTtsMuted ? "var(--text-muted)" : "var(--accent-cyan)",
-            cursor: "pointer"
+            gap: "8px",
+            pointerEvents: "auto",
+            flexShrink: 0
           }}
         >
-          {isTtsMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-        </button>
-
-        {session.completed_steps.length > 0 && (
+          {/* Quick Parts Drawer Toggle */}
           <button
-            onClick={() => setActiveModal("summary")}
+            onClick={() => setActiveModal(activeModal === "parts" ? "none" : "parts")}
             className="glass-panel"
-            title="Session Log Dossier"
+            title="Verified Parts Finder"
             style={{
-              width: 36,
-              height: 36,
+              height: 38,
+              padding: "0 12px",
+              borderRadius: "var(--radius-pill)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              color: activeModal === "parts" ? "var(--bumblebee-yellow)" : "var(--text-secondary)",
+              border: activeModal === "parts" ? "1px solid var(--bumblebee-yellow)" : "1px solid var(--border-subtle)",
+              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: 500,
+              transition: "var(--transition-fast)"
+            }}
+          >
+            <Wrench size={14} />
+            <span className="hide-on-mobile">Parts</span>
+          </button>
+
+          {/* Quick Manual Toggle */}
+          <button
+            onClick={() => setActiveModal(activeModal === "manual" ? "none" : "manual")}
+            className="glass-panel"
+            title="OEM Service Manual Citations"
+            style={{
+              height: 38,
+              padding: "0 12px",
+              borderRadius: "var(--radius-pill)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              color: activeModal === "manual" ? "var(--accent-cyan)" : "var(--text-secondary)",
+              border: activeModal === "manual" ? "1px solid var(--accent-cyan)" : "1px solid var(--border-subtle)",
+              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: 500,
+              transition: "var(--transition-fast)"
+            }}
+          >
+            <BookOpen size={14} />
+            <span className="hide-on-mobile">Manual</span>
+          </button>
+
+          {/* Voice Mute Toggle */}
+          <button
+            onClick={() => setIsTtsMuted((m) => !m)}
+            className="glass-panel"
+            title={isTtsMuted ? "Unmute Bumblebee Voice" : "Mute Bumblebee Voice"}
+            style={{
+              width: 38,
+              height: 38,
               borderRadius: "50%",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "var(--status-verified)",
-              cursor: "pointer"
+              color: isTtsMuted ? "var(--text-muted)" : "var(--bumblebee-yellow)",
+              border: "1px solid var(--border-subtle)",
+              cursor: "pointer",
+              transition: "var(--transition-fast)"
             }}
           >
-            <FileText size={16} />
+            {isTtsMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
-        )}
-      </div>
+
+          {/* Session Dossier Summary */}
+          {session.completed_steps.length > 0 && (
+            <button
+              onClick={() => setActiveModal(activeModal === "summary" ? "none" : "summary")}
+              className="glass-panel"
+              title="Session Provenance Dossier"
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--status-verified)",
+                border: "1px solid rgba(16, 185, 129, 0.4)",
+                cursor: "pointer",
+                transition: "var(--transition-fast)"
+              }}
+            >
+              <FileText size={16} />
+            </button>
+          )}
+        </div>
+      </header>
 
       {/* 3. Live Verification Banner */}
       <VerificationBanner result={latestVerification} />
@@ -306,18 +394,18 @@ export default function MuseFieldChamber() {
           className="glass-panel"
           style={{
             position: "absolute",
-            bottom: "115px",
+            bottom: "clamp(96px, 13vh, 120px)",
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 30,
-            padding: "5px 16px",
+            padding: "6px 18px",
             borderRadius: "var(--radius-pill)",
             fontSize: "12px",
-            color: "var(--accent-cyan)",
-            maxWidth: "380px",
+            color: "var(--bumblebee-yellow)",
+            maxWidth: "min(380px, calc(100vw - 32px))",
             textAlign: "center",
-            border: "1px solid rgba(56, 189, 248, 0.4)",
-            animation: "pulse-cyan 2s infinite"
+            border: "1px solid rgba(250, 204, 21, 0.4)",
+            animation: "pulse-bumblebee 2s infinite"
           }}
         >
           &ldquo;{transcript}&rdquo;
@@ -329,24 +417,30 @@ export default function MuseFieldChamber() {
         <div
           style={{
             position: "absolute",
-            bottom: "115px",
+            bottom: "clamp(100px, 14vh, 125px)",
             left: "50%",
             transform: "translateX(-50%)",
-            zIndex: 25
+            zIndex: 25,
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            pointerEvents: "none"
           }}
         >
-          <ConversationalCard
-            phase={phase}
-            aiMessage={aiMessage}
-            step={currentStep}
-            totalSteps={session.procedure.steps.length}
-            verification={stepVerification}
-            isVerifying={isVerifying}
-            onQuickResponse={(text) => handleTurn(text)}
-            onVerifyStep={handleVerifyStep}
-            onNextStep={handleNextStep}
-            onOpenParts={() => setActiveModal("parts")}
-          />
+          <div style={{ pointerEvents: "auto" }}>
+            <ConversationalCard
+              phase={phase}
+              aiMessage={aiMessage}
+              step={currentStep}
+              totalSteps={session.procedure.steps.length}
+              verification={stepVerification}
+              isVerifying={isVerifying}
+              onQuickResponse={(text) => handleTurn(text)}
+              onVerifyStep={handleVerifyStep}
+              onNextStep={handleNextStep}
+              onOpenParts={() => setActiveModal("parts")}
+            />
+          </div>
         </div>
       )}
 

@@ -59,7 +59,7 @@ export function HeaderBar({
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ fontWeight: 700, fontSize: "var(--font-base)", letterSpacing: "1px", color: "#F8FAFC" }}>
-                MUSE FIELD
+                Bumblebee
               </span>
               <span
                 style={{

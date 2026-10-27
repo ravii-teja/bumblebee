@@ -36,32 +36,38 @@ export function ConversationalCard({
       id="hud-conversational-card"
       className="glass-panel"
       style={{
-        width: "500px",
-        maxWidth: "92vw",
+        width: "min(520px, calc(100vw - 24px))",
+        maxWidth: "96vw",
+        maxHeight: "clamp(260px, 46vh, 480px)",
+        overflowY: "auto",
         borderRadius: "var(--radius-lg)",
-        padding: "var(--space-3) var(--space-4)",
+        padding: "clamp(12px, 2.5vw, 18px)",
         display: "flex",
         flexDirection: "column",
         gap: "10px",
-        border: isVerified ? "1px solid var(--border-verified)" : "1px solid var(--border-subtle)",
-        boxShadow: "0 12px 36px rgba(0, 0, 0, 0.6), 0 0 1px 1px var(--border-subtle)",
+        border: isVerified
+          ? "1px solid var(--border-verified)"
+          : "1px solid rgba(250, 204, 21, 0.25)",
+        boxShadow: isVerified
+          ? "0 12px 36px rgba(0, 0, 0, 0.7), 0 0 16px rgba(16, 185, 129, 0.25)"
+          : "0 12px 36px rgba(0, 0, 0, 0.7), 0 0 16px rgba(250, 204, 21, 0.12)",
         transition: "var(--transition-normal)"
       }}
     >
       {/* Phase Status Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <Sparkles size={13} color="var(--accent-cyan)" />
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent-cyan)", letterSpacing: "0.5px" }}>
+          <Sparkles size={13} color="var(--bumblebee-yellow)" />
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--bumblebee-yellow)", letterSpacing: "0.5px" }}>
             {phase === "SCAN_VEHICLE" || phase === "CONFIRM_MAKE"
-              ? "CAMERA VEHICLE IDENTIFICATION"
+              ? "BUMBLEBEE • VEHICLE IDENTIFICATION"
               : phase === "ASK_MODEL_YEAR"
-              ? "MODEL & YEAR DISCOVERY"
+              ? "BUMBLEBEE • MODEL & YEAR DISCOVERY"
               : phase === "ASK_ISSUE"
-              ? "SYMPTOM & ISSUE DIAGNOSIS"
+              ? "BUMBLEBEE • SYMPTOM DIAGNOSIS"
               : phase === "ACTIVE_REPAIR" && step
               ? `STEP ${step.step_number} OF ${totalSteps}: ${step.title.toUpperCase()}`
-              : "REPAIR SESSION"}
+              : "BUMBLEBEE FIELD REPAIR"}
           </span>
         </div>
 

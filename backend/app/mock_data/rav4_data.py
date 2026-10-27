@@ -335,7 +335,7 @@ RAV4_DIAGNOSTICS = [
             "No active OBD-II misfire codes"
         ],
         recommended_checks=[
-            "Perform visual inspection of air cleaner element (MUSE FIELD Step 1-4)",
+            "Perform visual inspection of air cleaner element (Bumblebee Step 1-4)",
             "Hold filter up to bright flashlight: if light cannot pass through pleats, replacement is required"
         ],
         safety_level="NON_SAFETY_CRITICAL",

@@ -1,4 +1,4 @@
-/* MUSE FIELD — Cyber-Physical Field HUD Design System */
+/* Bumblebee — Cyber-Physical Field HUD Design System */
 /* Principles: Google Minimalist Precision + Golden Ratio (phi ≈ 1.618) */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -37,10 +37,18 @@
   --bg-surface-3: rgba(30, 39, 56, 0.92);
   --bg-hover: rgba(255, 255, 255, 0.05);
 
+  /* Bumblebee Signature Accents */
+  --bumblebee-yellow: #FACC15;
+  --bumblebee-amber: #F59E0B;
+  --bumblebee-gold: #EAB308;
+  --bumblebee-dark: #78350F;
+  --bumblebee-glow: 0 0 24px rgba(250, 204, 21, 0.4);
+
   /* Borders & Glassmorphism */
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-active: rgba(56, 189, 248, 0.5);
   --border-verified: rgba(16, 185, 129, 0.5);
+  --border-bumblebee: rgba(250, 204, 21, 0.45);
   --border-danger: rgba(239, 68, 68, 0.5);
 
   /* Accents */
@@ -55,11 +63,13 @@
   --text-secondary: #94A3B8;
   --text-muted: #64748B;
   --text-highlight: #38BDF8;
+  --text-bumblebee: #FACC15;
 
   /* Shadows & Elevation */
   --shadow-hud: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 1px 1px var(--border-subtle);
   --shadow-glow-cyan: 0 0 25px rgba(56, 189, 248, 0.25);
   --shadow-glow-emerald: 0 0 25px rgba(16, 185, 129, 0.25);
+  --shadow-glow-bumblebee: 0 0 25px rgba(250, 204, 21, 0.35);
 
   /* Radius (Google Rounded Minimalism) */
   --radius-sm: 6px;
@@ -133,6 +143,12 @@ code, kbd, samp, pre {
   100% { transform: translateY(1000%); }
 }
 
+@keyframes pulse-bumblebee {
+  0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.45); }
+  70% { box-shadow: 0 0 0 12px rgba(250, 204, 21, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+}
+
 /* Scrollbar Minimalist */
 ::-webkit-scrollbar {
   width: 6px;
@@ -147,4 +163,32 @@ code, kbd, samp, pre {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive Adaptive Viewport Utilities following Google Design System */
+.responsive-drawer-modal {
+  position: absolute;
+  top: clamp(64px, 10vh, 80px);
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: clamp(16px, 3vh, 32px);
+  width: min(640px, calc(100vw - 24px));
+  max-width: 95vw;
+  z-index: 40;
+  border-radius: var(--radius-lg);
+  padding: clamp(14px, 2.5vw, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 640px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+  .condense-on-mobile {
+    padding: 6px 10px !important;
+    gap: 6px !important;
+  }
 }

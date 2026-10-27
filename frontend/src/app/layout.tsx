@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MUSE FIELD — AI Field Engineer for Automotive Repair",
+  title: "Bumblebee — AI Field Engineer for Automotive Repair",
   description:
-    "Point. Understand. Repair. Verify. Multimodal physical-AI automotive repair assistant powered by Meta Muse Spark and SAM 3.1.",
+    "Point. Understand. Repair. Verify. Multimodal physical-AI automotive repair assistant powered by Bumblebee.",
 };
 
 export default function RootLayout({

@@ -44,105 +44,115 @@ export function CameraViewport({
     }
   };
 
-  // Render Wireframe only when in active repair mode
+  // Render Wireframe only when in active repair mode (with window resize listener)
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    const drawOverlay = () => {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
 
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    canvas.width = width;
-    canvas.height = height;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      canvas.width = width;
+      canvas.height = height;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, width, height);
 
-    // Only draw wireframe overlay when in ACTIVE_REPAIR or ANALYZING_ISSUE
-    if (phase !== "ACTIVE_REPAIR" && phase !== "ANALYZING_ISSUE") {
-      return;
-    }
+      // Only draw wireframe overlay when in ACTIVE_REPAIR or ANALYZING_ISSUE
+      if (phase !== "ACTIVE_REPAIR" && phase !== "ANALYZING_ISSUE") {
+        return;
+      }
 
-    // Find the target component to highlight (Engine Air Cleaner Assembly)
-    const targetComp = components.find(
-      (c) => c.component_id === "air_cleaner_assembly" || c.component_id === selectedComponent?.component_id
-    );
+      // Find the target component to highlight (Engine Air Cleaner Assembly)
+      const targetComp = components.find(
+        (c) => c.component_id === "air_cleaner_assembly" || c.component_id === selectedComponent?.component_id
+      );
 
-    if (!targetComp || !targetComp.polygon_points || targetComp.polygon_points.length < 3) {
-      return;
-    }
+      if (!targetComp || !targetComp.polygon_points || targetComp.polygon_points.length < 3) {
+        return;
+      }
 
-    const points = targetComp.polygon_points;
+      const points = targetComp.polygon_points;
 
-    // Draw Glowing Wireframe Boundary
-    ctx.beginPath();
-    ctx.moveTo(points[0][0] * width, points[0][1] * height);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i][0] * width, points[i][1] * height);
-    }
-    ctx.closePath();
-
-    ctx.strokeStyle = "#38BDF8";
-    ctx.lineWidth = 2.5;
-    ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
-    ctx.shadowColor = "#38BDF8";
-    ctx.shadowBlur = 14;
-    ctx.fill();
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Draw Geometric Wireframe Grid Lines inside polygon
-    ctx.save();
-    ctx.clip();
-
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.3)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-
-    const bb = targetComp.bounding_box;
-    const bx = bb.xmin * width;
-    const by = bb.ymin * height;
-    const bw = (bb.xmax - bb.xmin) * width;
-    const bh = (bb.ymax - bb.ymin) * height;
-
-    const gridStep = 24;
-    for (let x = bx; x <= bx + bw; x += gridStep) {
+      // Draw Glowing Wireframe Boundary with Bumblebee Gold / Amber glow
       ctx.beginPath();
-      ctx.moveTo(x, by);
-      ctx.lineTo(x, by + bh);
+      ctx.moveTo(points[0][0] * width, points[0][1] * height);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i][0] * width, points[i][1] * height);
+      }
+      ctx.closePath();
+
+      ctx.strokeStyle = "#FACC15";
+      ctx.lineWidth = 2.5;
+      ctx.fillStyle = "rgba(250, 204, 21, 0.12)";
+      ctx.shadowColor = "#FACC15";
+      ctx.shadowBlur = 14;
+      ctx.fill();
       ctx.stroke();
-    }
-    for (let y = by; y <= by + bh; y += gridStep) {
+      ctx.shadowBlur = 0;
+
+      // Draw Geometric Wireframe Grid Lines inside polygon
+      ctx.save();
+      ctx.clip();
+
+      ctx.strokeStyle = "rgba(250, 204, 21, 0.3)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+
+      const bb = targetComp.bounding_box;
+      const bx = bb.xmin * width;
+      const by = bb.ymin * height;
+      const bw = (bb.xmax - bb.xmin) * width;
+      const bh = (bb.ymax - bb.ymin) * height;
+
+      const gridStep = 24;
+      for (let x = bx; x <= bx + bw; x += gridStep) {
+        ctx.beginPath();
+        ctx.moveTo(x, by);
+        ctx.lineTo(x, by + bh);
+        ctx.stroke();
+      }
+      for (let y = by; y <= by + bh; y += gridStep) {
+        ctx.beginPath();
+        ctx.moveTo(bx, y);
+        ctx.lineTo(bx + bw, y);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // Clean, subtle component title pin
+      const labelX = points[0][0] * width;
+      const labelY = points[0][1] * height;
+
+      ctx.fillStyle = "rgba(14, 18, 26, 0.9)";
+      ctx.strokeStyle = "#FACC15";
+      ctx.lineWidth = 1;
+
+      const labelText = targetComp.name;
+      ctx.font = "600 12px 'Inter', sans-serif";
+      const textW = ctx.measureText(labelText).width;
+
       ctx.beginPath();
-      ctx.moveTo(bx, y);
-      ctx.lineTo(bx + bw, y);
+      ctx.roundRect(labelX - 4, labelY - 26, textW + 16, 22, 6);
+      ctx.fill();
       ctx.stroke();
-    }
 
-    ctx.setLineDash([]);
-    ctx.restore();
+      ctx.fillStyle = "#FACC15";
+      ctx.fillText(labelText, labelX + 4, labelY - 11);
+    };
 
-    // Clean, subtle component title pin
-    const labelX = points[0][0] * width;
-    const labelY = points[0][1] * height;
-
-    ctx.fillStyle = "rgba(14, 18, 26, 0.9)";
-    ctx.strokeStyle = "#38BDF8";
-    ctx.lineWidth = 1;
-
-    const labelText = targetComp.name;
-    ctx.font = "500 12px 'Inter', sans-serif";
-    const textW = ctx.measureText(labelText).width;
-
-    ctx.beginPath();
-    ctx.roundRect(labelX - 4, labelY - 26, textW + 16, 22, 6);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#38BDF8";
-    ctx.fillText(labelText, labelX + 4, labelY - 11);
+    drawOverlay();
+    window.addEventListener("resize", drawOverlay);
+    window.addEventListener("orientationchange", drawOverlay);
+    return () => {
+      window.removeEventListener("resize", drawOverlay);
+      window.removeEventListener("orientationchange", drawOverlay);
+    };
   }, [components, selectedComponent, phase]);
 
   return (

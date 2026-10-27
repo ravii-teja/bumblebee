@@ -17,7 +17,7 @@ class SafetyGuard:
             if kw in comp_name_lower:
                 return False, (
                     f"SAFETY SHIELD ACTIVE: '{component.name}' belongs to a safety-critical system "
-                    f"({component.system}). In accordance with MUSE FIELD safety policy, "
+                    f"({component.system}). In accordance with Bumblebee safety policy, "
                     f"this operation is restricted to certified automotive master technicians. "
                     f"Refer to Toyota Authorized Dealership Service Bulletin."
                 )

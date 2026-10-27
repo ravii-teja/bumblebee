@@ -41,7 +41,7 @@ export function MinimalTopBar({
       case "COMPLETED":
         return "Inspection & Repair Complete";
       default:
-        return "MUSE FIELD Active";
+        return "Bumblebee Active";
     }
   };
 
@@ -77,11 +77,11 @@ export function MinimalTopBar({
             width: 24,
             height: 24,
             borderRadius: "6px",
-            background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)",
+            background: "linear-gradient(135deg, #FACC15 0%, #D97706 100%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#FFF"
+            color: "#0F172A"
           }}
         >
           <Cpu size={14} />
@@ -89,7 +89,7 @@ export function MinimalTopBar({
 
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <span style={{ fontWeight: 700, fontSize: "12px", letterSpacing: "0.5px", color: "#F8FAFC" }}>
-            MUSE FIELD
+            Bumblebee
           </span>
           <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>•</span>
           <span style={{ fontSize: "12px", color: "var(--accent-cyan)", fontWeight: 500 }}>

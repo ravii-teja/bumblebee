@@ -14,34 +14,56 @@ export function EvidenceModal({ onClose }: EvidenceModalProps) {
       className="glass-panel"
       style={{
         position: "absolute",
-        top: "76px",
+        top: "clamp(68px, 10vh, 84px)",
         left: "50%",
         transform: "translateX(-50%)",
-        bottom: "var(--space-4)",
-        width: "600px",
-        maxWidth: "92vw",
-        zIndex: 25,
+        bottom: "clamp(16px, 3vh, 24px)",
+        width: "min(620px, calc(100vw - 24px))",
+        maxWidth: "96vw",
+        zIndex: 40,
         borderRadius: "var(--radius-lg)",
-        padding: "var(--space-4)",
+        padding: "clamp(14px, 2.5vw, 22px)",
         display: "flex",
         flexDirection: "column",
         gap: "var(--space-3)",
-        border: "1px solid var(--border-subtle)"
+        border: "1px solid rgba(56, 189, 248, 0.3)",
+        boxShadow: "0 16px 48px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.12)"
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <BookOpen size={18} color="var(--accent-cyan)" />
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              background: "rgba(56, 189, 248, 0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--accent-cyan)"
+            }}
+          >
+            <BookOpen size={16} />
+          </div>
           <div>
             <h3 style={{ fontSize: "var(--font-base)", fontWeight: 600, color: "#F8FAFC" }}>
-              Manufacturer Service Documentation
+              Bumblebee OEM Service Evidence
             </h3>
             <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-              Toyota Technical Information System (TIS) • Publication OM42C33U
+              Official Manufacturer Service Information &amp; Technical Bulletins
             </span>
           </div>
         </div>
-        <button onClick={onClose} style={{ color: "var(--text-muted)", padding: "4px" }}>
+        <button
+          onClick={onClose}
+          style={{
+            color: "var(--text-muted)",
+            padding: "8px",
+            borderRadius: "var(--radius-sm)",
+            cursor: "pointer"
+          }}
+        >
           <X size={18} />
         </button>
       </div>

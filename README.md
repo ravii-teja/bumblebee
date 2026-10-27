@@ -1,4 +1,4 @@
-# MUSE FIELD — AI Field Engineer for Automotive Repair
+# Bumblebee — AI Field Engineer for Automotive Repair
 **Theme:** Meta AI Developer Hackathon — Push the Frontier  
 **Tagline:** Point. Understand. Repair. Verify.  
 **Models:** Meta Muse Spark • SAM 3.1 (Segment Anything) • Meta Llama Multimodal
@@ -7,7 +7,7 @@
 
 ## Overview
 
-MUSE FIELD is a multimodal physical-AI automotive repair assistant that bridges foundation perception models with deterministic field engineering. It allows vehicle owners and field technicians to:
+Bumblebee is a multimodal physical-AI automotive repair assistant that bridges foundation perception models with deterministic field engineering. It allows vehicle owners and field technicians to:
 1. **Point** a live smartphone or tablet camera at an automotive engine compartment.
 2. **Understand** components and spatial relationships through **Meta Muse Spark** perception and **SAM 3.1** pixel-precise polygon segmentation.
 3. **Retrieve** grounded manufacturer repair procedures and verified replacement parts with documented evidence.
@@ -17,7 +17,7 @@ MUSE FIELD is a multimodal physical-AI automotive repair assistant that bridges 
 
 ## Design System: Google Minimalist Precision & Golden Ratio ($\phi \approx 1.618$)
 
-MUSE FIELD implements Google Material minimalist engineering:
+Bumblebee implements Google Material minimalist engineering:
 - **Golden Ratio ($\phi$) Grid & Typography:** Layout splits (61.8% primary HUD, 38.2% inspector drawers) and spacing scales derived from $\phi \approx 1.618$.
 - **High-Contrast Cyber-Physical HUD:** Sleek Obsidian dark mode (`#07090D`) with precision cyan reticles (`#38BDF8`), field amber highlights (`#F59E0B`), and grounded verification emerald (`#10B981`).
 - **Hands-Free Operation:** Integrated Web Speech API for voice-driven step progression, parts lookup, and verification.

@@ -50,14 +50,17 @@ export function CleanControlBar({
       id="clean-control-bar"
       style={{
         position: "absolute",
-        bottom: "32px",
+        bottom: "max(18px, env(safe-area-inset-bottom))",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 35,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: "12px"
+        gap: "10px",
+        pointerEvents: "none",
+        width: "100%",
+        padding: "0 16px"
       }}
     >
       {/* Minimal Floating Chat Input (when opened) */}
@@ -69,18 +72,19 @@ export function CleanControlBar({
             display: "flex",
             alignItems: "center",
             gap: "8px",
-            padding: "6px 12px",
+            padding: "6px 14px",
             borderRadius: "var(--radius-pill)",
-            width: "360px",
-            maxWidth: "90vw",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.7)"
+            width: "min(380px, calc(100vw - 32px))",
+            maxWidth: "92vw",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.7), 0 0 1px 1px var(--border-bumblebee)",
+            pointerEvents: "auto"
           }}
         >
           <input
             type="text"
             value={chatText}
             onChange={(e) => setChatText(e.target.value)}
-            placeholder="Describe issue or ask a question..."
+            placeholder="Describe issue or ask Bumblebee..."
             autoFocus
             style={{
               flex: 1,
@@ -98,7 +102,7 @@ export function CleanControlBar({
               width: 28,
               height: 28,
               borderRadius: "50%",
-              background: chatText.trim() ? "var(--accent-cyan)" : "transparent",
+              background: chatText.trim() ? "var(--bumblebee-yellow)" : "transparent",
               color: chatText.trim() ? "#0F172A" : "var(--text-muted)",
               display: "flex",
               alignItems: "center",
@@ -113,7 +117,8 @@ export function CleanControlBar({
             onClick={() => setShowChatInput(false)}
             style={{
               color: "var(--text-muted)",
-              cursor: "pointer"
+              cursor: "pointer",
+              padding: "4px"
             }}
           >
             <X size={15} />
@@ -121,16 +126,17 @@ export function CleanControlBar({
         </form>
       )}
 
-      {/* The 3 Core Actions: Chat, Camera Shutter, Mic */}
+      {/* The 4 Core Actions: Chat, Upload Image, Camera Shutter, Mic */}
       <div
         className="glass-panel"
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
-          padding: "8px 20px",
+          gap: "clamp(8px, 2.5vw, 16px)",
+          padding: "clamp(6px, 1.5vh, 8px) clamp(12px, 3vw, 20px)",
           borderRadius: "var(--radius-pill)",
-          boxShadow: "0 12px 40px rgba(0, 0, 0, 0.7), 0 0 1px 1px var(--border-subtle)"
+          boxShadow: "0 12px 40px rgba(0, 0, 0, 0.7), 0 0 1px 1px var(--border-subtle)",
+          pointerEvents: "auto"
         }}
       >
         {/* Hidden File Input for Image Upload */}
@@ -154,9 +160,9 @@ export function CleanControlBar({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: showChatInput ? "rgba(56, 189, 248, 0.2)" : "var(--bg-surface-2)",
-            color: showChatInput ? "var(--accent-cyan)" : "var(--text-secondary)",
-            border: showChatInput ? "1px solid var(--accent-cyan)" : "1px solid var(--border-subtle)",
+            background: showChatInput ? "rgba(250, 204, 21, 0.2)" : "var(--bg-surface-2)",
+            color: showChatInput ? "var(--bumblebee-yellow)" : "var(--text-secondary)",
+            border: showChatInput ? "1px solid var(--bumblebee-yellow)" : "1px solid var(--border-subtle)",
             cursor: "pointer",
             transition: "var(--transition-fast)"
           }}
@@ -186,7 +192,7 @@ export function CleanControlBar({
           <ImageIcon size={19} />
         </button>
 
-        {/* 2. Primary Camera Shutter / Scan Button */}
+        {/* 3. Primary Bumblebee Camera Shutter / Scan Button */}
         <button
           id="btn-camera-capture"
           onClick={onCaptureCamera}
@@ -199,24 +205,24 @@ export function CleanControlBar({
             alignItems: "center",
             justifyContent: "center",
             background: isProcessing
-              ? "rgba(56, 189, 248, 0.3)"
-              : "radial-gradient(circle, #38BDF8 0%, #0284C7 75%)",
-            color: "#FFFFFF",
-            border: "3px solid rgba(255, 255, 255, 0.8)",
-            boxShadow: "0 0 24px rgba(56, 189, 248, 0.5), 0 8px 24px rgba(0,0,0,0.6)",
+              ? "rgba(250, 204, 21, 0.3)"
+              : "radial-gradient(circle, #FACC15 0%, #D97706 80%)",
+            color: "#0F172A",
+            border: "3px solid rgba(255, 255, 255, 0.85)",
+            boxShadow: "0 0 24px rgba(250, 204, 21, 0.6), 0 8px 24px rgba(0,0,0,0.6)",
             cursor: "pointer",
             transition: "var(--transition-fast)",
             transform: isProcessing ? "scale(0.95)" : "scale(1)"
           }}
         >
-          <Camera size={28} />
+          <Camera size={28} color="#07090D" strokeWidth={2.4} />
         </button>
 
-        {/* 3. Voice Mode Orb */}
+        {/* 4. Voice Mode Orb */}
         <button
           id="btn-voice-mode"
           onClick={onToggleVoice}
-          title={isListening ? "Listening... (Tap to mute)" : "Tap to activate voice mode"}
+          title={isListening ? "Listening... (Tap to mute)" : "Tap to activate Bumblebee voice mode"}
           style={{
             width: 44,
             height: 44,
@@ -224,16 +230,16 @@ export function CleanControlBar({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: isListening ? "var(--accent-cyan)" : "var(--bg-surface-2)",
+            background: isListening ? "var(--bumblebee-yellow)" : "var(--bg-surface-2)",
             color: isListening ? "#0F172A" : "var(--text-secondary)",
-            border: isListening ? "1px solid #7DD3FC" : "1px solid var(--border-subtle)",
-            boxShadow: isListening ? "0 0 18px rgba(56, 189, 248, 0.6)" : "none",
+            border: isListening ? "1px solid #FEF08A" : "1px solid var(--border-subtle)",
+            boxShadow: isListening ? "0 0 18px rgba(250, 204, 21, 0.6)" : "none",
             cursor: "pointer",
             transition: "var(--transition-fast)",
-            animation: isListening ? "pulse-cyan 1.6s infinite" : "none"
+            animation: isListening ? "pulse-bumblebee 1.6s infinite" : "none"
           }}
         >
-          {isListening ? <Mic size={20} /> : <MicOff size={19} />}
+          {isListening ? <Mic size={20} strokeWidth={2.5} /> : <MicOff size={19} />}
         </button>
       </div>
     </div>
