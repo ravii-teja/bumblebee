@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { RepairSession, ComponentObservation, VerificationResult, DialoguePhase } from "@/lib/types";
 import { createSession, fetchComponents, verifyStepState, sendConversationTurn } from "@/lib/api";
 import { useCamera } from "@/hooks/useCamera";
@@ -29,6 +29,7 @@ export default function BumblebeeChamber() {
   const [phase, setPhase] = useState<DialoguePhase>("SCAN_VEHICLE");
   const [aiMessage, setAiMessage] = useState<string>("");
   const [useSimulation, setUseSimulation] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const {
     videoRef,
@@ -41,17 +42,46 @@ export default function BumblebeeChamber() {
     captureFrame
   } = useCamera();
 
-  // Text-to-Speech synthesizer
+  // Forward declarations for interactive voice loop
+  const handleTurnRef = useRef<(userInput: string, customImageBase64?: string) => Promise<void>>(async () => {});
+
+  const {
+    isListening,
+    isVoiceActive,
+    transcript,
+    toggleListening,
+    pauseForSpeaking,
+    resumeAfterSpeaking
+  } = useSpeechRecognition((text) => handleTurnRef.current(text));
+
+  // Text-to-Speech synthesizer with hands-free conversation continuation
   const speakText = useCallback(
     (text: string) => {
-      if (isTtsMuted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+      if (isTtsMuted || typeof window === "undefined" || !("speechSynthesis" in window)) {
+        resumeAfterSpeaking();
+        return;
+      }
       window.speechSynthesis.cancel();
+      pauseForSpeaking();
+      setIsSpeaking(true);
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.05;
       utterance.pitch = 1.0;
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        resumeAfterSpeaking();
+      };
+
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+        resumeAfterSpeaking();
+      };
+
       window.speechSynthesis.speak(utterance);
     },
-    [isTtsMuted]
+    [isTtsMuted, pauseForSpeaking, resumeAfterSpeaking]
   );
 
   // Dispatch conversational turn
@@ -108,6 +138,10 @@ export default function BumblebeeChamber() {
     [session, isProcessing, captureFrame, speakText]
   );
 
+  useEffect(() => {
+    handleTurnRef.current = handleTurn;
+  }, [handleTurn]);
+
   const handleUploadImage = useCallback(
     async (base64: string) => {
       if (phase === "SCAN_VEHICLE") {
@@ -120,8 +154,6 @@ export default function BumblebeeChamber() {
     },
     [phase, handleTurn]
   );
-
-  const { isListening, transcript, toggleListening } = useSpeechRecognition(handleTurn);
 
   // Initialize Session quietly without injecting hardcoded dialogue
   useEffect(() => {
@@ -261,8 +293,13 @@ export default function BumblebeeChamber() {
         <div style={{ pointerEvents: "auto", flexShrink: 0 }}>
           <BumblebeeBrandBadge
             vehicleText={
-              session.vehicle_profile.model && session.vehicle_profile.model !== "General Vehicle"
-                ? `${session.vehicle_profile.year || 2022} ${session.vehicle_profile.make} ${session.vehicle_profile.model}`
+              session.vehicle_profile.make &&
+              session.vehicle_profile.make !== "generic_vehicle" &&
+              session.vehicle_profile.make.trim() !== "" &&
+              session.vehicle_profile.model &&
+              session.vehicle_profile.model !== "General Vehicle" &&
+              session.vehicle_profile.model !== "Vehicle"
+                ? `${session.vehicle_profile.year ? `${session.vehicle_profile.year} ` : ""}${session.vehicle_profile.make} ${session.vehicle_profile.model}`
                 : undefined
             }
             isLive={hasCamera}
@@ -428,8 +465,8 @@ export default function BumblebeeChamber() {
       {/* 3. Live Verification Banner */}
       <VerificationBanner result={latestVerification} />
 
-      {/* 4. Live Speech Transcription Pill */}
-      {transcript && (
+      {/* 4. Interactive Voice Conversation Pill */}
+      {(isVoiceActive || transcript || isSpeaking) && (
         <div
           className="glass-panel"
           style={{
@@ -437,18 +474,42 @@ export default function BumblebeeChamber() {
             bottom: "clamp(96px, 13vh, 120px)",
             left: "50%",
             transform: "translateX(-50%)",
-            zIndex: 30,
-            padding: "6px 18px",
+            zIndex: 32,
+            padding: "8px 20px",
             borderRadius: "var(--radius-pill)",
             fontSize: "12px",
-            color: "var(--bumblebee-yellow)",
-            maxWidth: "min(380px, calc(100vw - 32px))",
-            textAlign: "center",
-            border: "1px solid rgba(250, 204, 21, 0.4)",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            background: "rgba(10, 13, 20, 0.94)",
+            border: isSpeaking
+              ? "1px solid rgba(56, 189, 248, 0.5)"
+              : "1px solid rgba(250, 204, 21, 0.5)",
+            boxShadow: isSpeaking
+              ? "0 8px 30px rgba(56, 189, 248, 0.25)"
+              : "0 8px 30px rgba(250, 204, 21, 0.25)",
+            maxWidth: "min(420px, calc(100vw - 32px))",
+            color: isSpeaking ? "var(--accent-cyan)" : "var(--bumblebee-yellow)",
             animation: "pulse-bumblebee 2s infinite"
           }}
         >
-          &ldquo;{transcript}&rdquo;
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              backgroundColor: isSpeaking ? "#38BDF8" : "#FACC15",
+              boxShadow: isSpeaking ? "0 0 10px #38BDF8" : "0 0 10px #FACC15"
+            }}
+          />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {isSpeaking
+              ? "🔊 Bumblebee speaking..."
+              : transcript
+              ? `“${transcript}”`
+              : "🎙️ Listening... Speak naturally"}
+          </span>
         </div>
       )}
 
@@ -488,7 +549,7 @@ export default function BumblebeeChamber() {
 
       {/* 6. Clean Floating Control Bar (Chat Option, Image Upload, Camera Shutter, Voice Mic) */}
       <CleanControlBar
-        isListening={isListening}
+        isListening={isVoiceActive || isListening}
         onToggleVoice={toggleListening}
         onCaptureCamera={handleCameraScan}
         onSendChat={(text) => handleTurn(text)}

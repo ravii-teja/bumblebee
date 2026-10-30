@@ -14,6 +14,7 @@ def get_parts(
     component: str = "air_filter",
     make: Optional[str] = None,
     model: Optional[str] = None,
-    year: Optional[int] = None
+    year: Optional[int] = None,
+    query: Optional[str] = None
 ):
-    return parts_service.search_compatible_parts(vehicle_id, component, make, model, year)
+    return parts_service.search_compatible_parts(vehicle_id, component, make, model, year, query)

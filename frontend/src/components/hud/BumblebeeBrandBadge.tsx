@@ -8,6 +8,14 @@ interface BumblebeeBrandBadgeProps {
 }
 
 export function BumblebeeBrandBadge({ vehicleText, isLive = true }: BumblebeeBrandBadgeProps) {
+  const cleanVehicle =
+    vehicleText &&
+    !vehicleText.toLowerCase().includes("2024 vehicle") &&
+    vehicleText.trim().toLowerCase() !== "vehicle" &&
+    vehicleText.trim().toLowerCase() !== "general vehicle"
+      ? vehicleText.trim()
+      : undefined;
+
   return (
     <div
       id="bumblebee-top-left-brand"
@@ -122,7 +130,7 @@ export function BumblebeeBrandBadge({ vehicleText, isLive = true }: BumblebeeBra
           >
             AI Field Engineer
           </span>
-          {vehicleText && (
+          {cleanVehicle && (
             <>
               <span style={{ fontSize: "9px", color: "var(--text-muted)" }}>•</span>
               <span
@@ -136,7 +144,7 @@ export function BumblebeeBrandBadge({ vehicleText, isLive = true }: BumblebeeBra
                   whiteSpace: "nowrap"
                 }}
               >
-                {vehicleText}
+                {cleanVehicle}
               </span>
             </>
           )}

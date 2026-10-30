@@ -318,13 +318,20 @@ export async function verifyStepState(
   };
 }
 
-export async function fetchParts(vehicleId = "generic_vehicle", make = "", model = "", year = 2022): Promise<PartCandidate[]> {
+export async function fetchParts(
+  vehicleId = "generic_vehicle",
+  make = "",
+  model = "",
+  year = 2022,
+  query = ""
+): Promise<PartCandidate[]> {
   try {
     const params = new URLSearchParams({
       vehicle_id: vehicleId,
       ...(make ? { make } : {}),
       ...(model ? { model } : {}),
-      ...(year ? { year: String(year) } : {})
+      ...(year ? { year: String(year) } : {}),
+      ...(query ? { query } : {})
     });
     const res = await fetch(`${getApiBase()}/parts?${params.toString()}`);
     if (res.ok) return await res.json();

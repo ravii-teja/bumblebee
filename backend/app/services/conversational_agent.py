@@ -1,6 +1,10 @@
 """Conversational Orchestration Agent for MUSE FIELD.
 Dynamically detects or accepts vehicle make, model, year, and issue over voice or text."""
+import os
 import re
+import json
+import logging
+import httpx
 from typing import Dict, Any, Optional, Tuple
 from app.models.schemas import (
     RepairSession,
@@ -19,6 +23,46 @@ from app.mock_data.rav4_data import (
     create_dynamic_vehicle_profile,
     create_dynamic_procedure
 )
+
+logger = logging.getLogger(__name__)
+
+META_API_KEY = os.getenv("META_API_KEY") or os.getenv("LLM_API_KEY") or ""
+META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.together.xyz/v1/chat/completions")
+META_MODEL_NAME = os.getenv("META_MODEL_NAME", "meta-llama/Llama-Vision-Free")
+
+
+async def ask_meta_llm(system_context: str, user_question: str) -> Optional[str]:
+    """Queries Meta Llama API for real-time conversational voice responses."""
+    api_key = os.getenv("META_API_KEY") or os.getenv("LLM_API_KEY") or ""
+    if not api_key:
+        return None
+    try:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        messages = [
+            {
+                "role": "system",
+                "content": f"{system_context}\nAnswer the technician directly, accurately, and concisely in 2 sentences suitable for natural speech interaction."
+            },
+            {"role": "user", "content": user_question}
+        ]
+        payload = {
+            "model": META_MODEL_NAME,
+            "messages": messages,
+            "max_tokens": 180,
+            "temperature": 0.4
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.post(META_API_ENDPOINT, headers=headers, json=payload)
+            if resp.status_code == 200:
+                answer = resp.json()["choices"][0]["message"]["content"].strip()
+                clean_ans = answer.replace("**", "").replace("##", "").strip()
+                return clean_ans
+    except Exception as e:
+        logger.warning(f"Meta LLM voice conversational turn failed: {e}")
+    return None
 
 KNOWN_MAKES = [
     "Toyota", "Honda", "Ford", "Chevrolet", "BMW", "Mercedes-Benz", "Nissan",
@@ -342,18 +386,61 @@ class ConversationalAgentService:
                     )
                     return text, speech, "COMPLETED", {"status": "COMPLETED"}
 
-            if "part" in input_lower or "filter" in input_lower:
-                veh = session.vehicle_profile
+            veh = session.vehicle_profile
+            current_step = session.procedure.steps[current_step_num - 1]
+
+            # 1. Tools question
+            if any(w in input_lower for w in ["tool", "wrench", "socket", "screwdriver", "pliers", "equipment", "what do i need"]):
+                tools_needed = ", ".join(current_step.required_tools) or "No special tools needed (hands only)"
                 text = (
-                    f"**Verified Replacement Parts for {veh.year} {veh.make} {veh.model}:**\n"
+                    f"**Tools for Step {current_step_num} ({current_step.title}):**\n\n"
+                    f"- {tools_needed}\n\n"
+                    f"**Instruction:** {current_step.instruction}"
+                )
+                speech = f"For Step {current_step_num}, you need {tools_needed}. {current_step.instruction}"
+                return text, speech, phase, {"step": current_step.model_dump(), "tools": current_step.required_tools}
+
+            # 2. Safety question
+            if any(w in input_lower for w in ["safe", "danger", "warning", "hot", "caution", "hazard", "shock"]):
+                warn = current_step.safety_warning or "Ensure vehicle engine is switched completely off and cool before handling components."
+                text = f"**Safety Advisory (Step {current_step_num}):**\n\n{warn}"
+                speech = f"Safety advisory: {warn}"
+                return text, speech, phase, {"safety_warning": warn}
+
+            # 3. Repeat / Clarify instruction
+            if any(w in input_lower for w in ["repeat", "again", "say that again", "what did you say", "explain", "how do i", "where is", "help"]):
+                text = (
+                    f"**Step {current_step_num}: {current_step.title}**\n\n"
+                    f"{current_step.instruction}\n\n"
+                    f"**Visual Goal:** {current_step.expected_visual_state}"
+                )
+                speech = f"Here is Step {current_step_num} again: {current_step.title}. {current_step.instruction}"
+                return text, speech, phase, {"step": current_step.model_dump()}
+
+            # 4. Parts inquiry
+            if "part" in input_lower or "filter" in input_lower or "price" in input_lower or "cost" in input_lower or "buy" in input_lower:
+                text = (
+                    f"**Verified Replacement Parts for {veh.year or 2022} {veh.make} {veh.model}:**\n"
                     f"- **{veh.make} Factory OEM Part:** Certified direct fit ($24.50)\n"
                     f"- **Tier-1 Aftermarket Alternative:** FRAM Extra Guard CA12289 ($16.99)\n"
                     f"- **Compatibility Evidence:** Grounded in manufacturer parts catalog."
                 )
-                speech = f"Factory replacement parts are verified compatible for your {veh.make} {veh.model}."
+                speech = f"Verified replacement parts for your {veh.make} {veh.model} are loaded in the Parts drawer."
                 return text, speech, phase, {"action": "SHOW_PARTS"}
 
-            current_step = session.procedure.steps[current_step_num - 1]
+            # 5. General / Contextual AI query (Meta LLM or grounded expert reasoning)
+            system_prompt = (
+                f"You are Bumblebee, an expert master automotive field engineer assisting a technician working on a "
+                f"{veh.year or 2022} {veh.make} {veh.model}. "
+                f"Currently on Step {current_step_num} of {total_steps}: '{current_step.title}'. "
+                f"Instruction: '{current_step.instruction}'. Expected visual state: '{current_step.expected_visual_state}'."
+            )
+            llm_reply = await ask_meta_llm(system_prompt, input_clean)
+            if llm_reply:
+                text = f"**Bumblebee AI Engineer:**\n\n{llm_reply}\n\n*Current Task: Step {current_step_num} — {current_step.title}*"
+                speech = llm_reply
+                return text, speech, phase, {"step": current_step.model_dump(), "llm_answer": llm_reply}
+
             text = f"We are on **Step {current_step_num}: {current_step.title}**.\n\n{current_step.instruction}\n\nSay 'Verify' or 'Next step' when ready."
             speech = f"We are on Step {current_step_num}: {current_step.title}. Say 'Verify' or 'Next step' when ready."
             return text, speech, phase, {"step": current_step.model_dump()}
