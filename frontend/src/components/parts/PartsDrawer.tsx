@@ -1,26 +1,32 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { PartCandidate } from "@/lib/types";
+import { PartCandidate, VehicleProfile } from "@/lib/types";
 import { fetchParts } from "@/lib/api";
-import { X, Wrench, ExternalLink, ShieldCheck, Tag } from "lucide-react";
+import { X, Wrench, ExternalLink, ShieldCheck } from "lucide-react";
 
 interface PartsDrawerProps {
+  vehicle?: VehicleProfile;
   onClose: () => void;
 }
 
-export function PartsDrawer({ onClose }: PartsDrawerProps) {
+export function PartsDrawer({ vehicle, onClose }: PartsDrawerProps) {
   const [parts, setParts] = useState<PartCandidate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const data = await fetchParts("toyota_rav4_2022");
+      const data = await fetchParts(
+        vehicle?.id || "generic_vehicle",
+        vehicle?.make || "",
+        vehicle?.model || "",
+        vehicle?.year || 2022
+      );
       setParts(data);
       setLoading(false);
     }
     load();
-  }, []);
+  }, [vehicle]);
 
   return (
     <div
@@ -65,7 +71,7 @@ export function PartsDrawer({ onClose }: PartsDrawerProps) {
               Bumblebee Verified Parts
             </h3>
             <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-              Direct Manufacturer Fitment &amp; Cross-Reference
+              {vehicle?.make ? `${vehicle.year || 2022} ${vehicle.make} ${vehicle.model}` : "Automotive Vehicle Fitment"}
             </span>
           </div>
         </div>
@@ -83,7 +89,7 @@ export function PartsDrawer({ onClose }: PartsDrawerProps) {
       </div>
 
       <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-        Compatibility strictly grounded in Toyota catalog data and manufacturer cross-references.
+        Compatibility strictly grounded in {vehicle?.make || "OEM"} catalog data and verified engineering tolerances.
       </p>
 
       {/* Parts List */}

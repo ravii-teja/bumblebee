@@ -1,13 +1,19 @@
 "use client";
 
 import React from "react";
-import { X, BookOpen, AlertOctagon, FileText } from "lucide-react";
+import { VehicleProfile } from "@/lib/types";
+import { X, BookOpen, AlertOctagon } from "lucide-react";
 
 interface EvidenceModalProps {
+  vehicle?: VehicleProfile;
   onClose: () => void;
 }
 
-export function EvidenceModal({ onClose }: EvidenceModalProps) {
+export function EvidenceModal({ vehicle, onClose }: EvidenceModalProps) {
+  const make = vehicle?.make || "OEM";
+  const model = vehicle?.model || "Vehicle";
+  const year = vehicle?.year || 2022;
+
   return (
     <div
       id="evidence-provenance-modal"
@@ -51,7 +57,7 @@ export function EvidenceModal({ onClose }: EvidenceModalProps) {
               Bumblebee OEM Service Evidence
             </h3>
             <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-              Official Manufacturer Service Information &amp; Technical Bulletins
+              {year} {make} {model} Technical Information System &amp; Service Manual
             </span>
           </div>
         </div>
@@ -77,7 +83,7 @@ export function EvidenceModal({ onClose }: EvidenceModalProps) {
           gap: "var(--space-3)"
         }}
       >
-        {/* Section 8-3 Citation */}
+        {/* Section: Do-it-yourself Maintenance */}
         <div
           style={{
             background: "var(--bg-surface-2)",
@@ -88,13 +94,13 @@ export function EvidenceModal({ onClose }: EvidenceModalProps) {
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
             <span style={{ fontWeight: 700, fontSize: "13px", color: "var(--accent-cyan)" }}>
-              Section 8-3: Do-it-yourself Maintenance — Air Cleaner Filter
+              {make} Field Service Manual: Air Cleaner Filter Inspection
             </span>
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Page 482 - 484</span>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Section: Air Induction</span>
           </div>
 
           <p style={{ fontSize: "12px", color: "#CBD5E1", lineHeight: 1.5, marginBottom: "8px" }}>
-            <strong>Inspection Interval:</strong> Inspect every 15,000 miles (24,000 km) or 18 months. Replace every 30,000 miles (48,000 km) or 36 months under standard operation; or every 15,000 miles if operating in dusty roads.
+            <strong>Inspection Interval:</strong> Inspect every 15,000 miles (24,000 km) or 12 months. Replace filter element immediately if pleats are saturated with grit, carbon, or foreign debris. Always verify that perimeter rubber gasket seals tightly without gaps.
           </p>
 
           <div
@@ -112,12 +118,12 @@ export function EvidenceModal({ onClose }: EvidenceModalProps) {
           >
             <AlertOctagon size={15} style={{ flexShrink: 0, marginTop: "2px" }} />
             <div>
-              <strong>Manufacturer Notice:</strong> Never run the engine with the air cleaner filter removed. Doing so will cause severe piston ring abrasion and turbo/intake contamination from unmetered atmospheric particulates.
+              <strong>Manufacturer Notice:</strong> Never run engine with air cleaner element removed. Particulate intrusion causes permanent cylinder wall abrasion, turbo vane damage, and fouled mass airflow sensor metering.
             </div>
           </div>
         </div>
 
-        {/* Section 9-1 Specifications */}
+        {/* Section: Specifications */}
         <div
           style={{
             background: "var(--bg-surface-2)",
@@ -128,27 +134,27 @@ export function EvidenceModal({ onClose }: EvidenceModalProps) {
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
             <span style={{ fontWeight: 700, fontSize: "13px", color: "var(--accent-cyan)" }}>
-              Section 9-1: Vehicle Specifications &amp; Maintenance Data
+              {year} {make} {model} Engineering Specifications
             </span>
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Page 536</span>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Factory Reference</span>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px" }}>
             <div style={{ background: "rgba(15, 23, 42, 0.5)", padding: "6px 8px", borderRadius: "4px" }}>
-              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>Engine Code</div>
-              <div style={{ color: "#F8FAFC", fontWeight: 600 }}>A25A-FKS 2.5L DOHC</div>
+              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>Powertrain Spec</div>
+              <div style={{ color: "#F8FAFC", fontWeight: 600 }}>{vehicle?.engine || "Factory Powertrain"}</div>
             </div>
             <div style={{ background: "rgba(15, 23, 42, 0.5)", padding: "6px 8px", borderRadius: "4px" }}>
-              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>OEM Filter Part Number</div>
-              <div style={{ color: "var(--status-verified)", fontWeight: 600 }}>17801-F0050</div>
+              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>OEM Filter Standard</div>
+              <div style={{ color: "var(--status-verified)", fontWeight: 600 }}>{make} OEM Spec</div>
             </div>
             <div style={{ background: "rgba(15, 23, 42, 0.5)", padding: "6px 8px", borderRadius: "4px" }}>
-              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>Engine Oil Specification</div>
-              <div style={{ color: "#F8FAFC", fontWeight: 600 }}>SAE 0W-16 (ILSAC GF-6B)</div>
+              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>Air Induction Type</div>
+              <div style={{ color: "#F8FAFC", fontWeight: 600 }}>Naturally Aspirated / Turbocharged</div>
             </div>
             <div style={{ background: "rgba(15, 23, 42, 0.5)", padding: "6px 8px", borderRadius: "4px" }}>
-              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>Intake Air Sensor</div>
-              <div style={{ color: "#F8FAFC", fontWeight: 600 }}>Hot-wire MAF Sensor</div>
+              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>MAF Sensor Type</div>
+              <div style={{ color: "#F8FAFC", fontWeight: 600 }}>Digital Thermal Anemometer</div>
             </div>
           </div>
         </div>

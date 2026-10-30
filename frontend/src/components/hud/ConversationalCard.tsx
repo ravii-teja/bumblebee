@@ -2,7 +2,7 @@
 
 import React from "react";
 import { RepairStep, VerificationResult, DialoguePhase } from "@/lib/types";
-import { CheckCircle2, AlertTriangle, Eye, ArrowRight, Sparkles, Wrench, RefreshCw, Layers } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Eye, ArrowRight, Sparkles, Wrench, RefreshCw } from "lucide-react";
 
 interface ConversationalCardProps {
   phase: DialoguePhase;
@@ -11,6 +11,8 @@ interface ConversationalCardProps {
   totalSteps?: number;
   verification?: VerificationResult;
   isVerifying: boolean;
+  detectedMake?: string;
+  confirmedMake?: string;
   onQuickResponse: (text: string) => void;
   onVerifyStep: () => void;
   onNextStep: () => void;
@@ -24,6 +26,8 @@ export function ConversationalCard({
   totalSteps = 6,
   verification,
   isVerifying,
+  detectedMake,
+  confirmedMake,
   onQuickResponse,
   onVerifyStep,
   onNextStep,
@@ -139,129 +143,71 @@ export function ConversationalCard({
         {/* Phase 1: Confirm Make */}
         {phase === "CONFIRM_MAKE" && (
           <>
-            <button
-              onClick={() => onQuickResponse("Yes, that's correct")}
-              style={{
-                padding: "6px 14px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--accent-cyan)",
-                color: "#0F172A",
-                fontSize: "12px",
-                fontWeight: 600
-              }}
-            >
-              ✓ Confirm Detected Make
-            </button>
-            <button
-              onClick={() => onQuickResponse("Honda")}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--bg-surface-2)",
-                color: "#E2E8F0",
-                border: "1px solid var(--border-subtle)",
-                fontSize: "12px"
-              }}
-            >
-              Honda
-            </button>
-            <button
-              onClick={() => onQuickResponse("Ford")}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--bg-surface-2)",
-                color: "#E2E8F0",
-                border: "1px solid var(--border-subtle)",
-                fontSize: "12px"
-              }}
-            >
-              Ford
-            </button>
-            <button
-              onClick={() => onQuickResponse("BMW")}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--bg-surface-2)",
-                color: "#E2E8F0",
-                border: "1px solid var(--border-subtle)",
-                fontSize: "12px"
-              }}
-            >
-              BMW
-            </button>
-            <button
-              onClick={() => onQuickResponse("Toyota")}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--bg-surface-2)",
-                color: "#E2E8F0",
-                border: "1px solid var(--border-subtle)",
-                fontSize: "12px"
-              }}
-            >
-              Toyota
-            </button>
+            {detectedMake && (
+              <button
+                onClick={() => onQuickResponse(`Yes, it's a ${detectedMake}`)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "var(--bumblebee-yellow)",
+                  color: "#0F172A",
+                  fontSize: "12px",
+                  fontWeight: 700
+                }}
+              >
+                ✓ Confirm {detectedMake}
+              </button>
+            )}
+            {["Honda", "Ford", "BMW", "Toyota", "Tesla", "Chevrolet", "Other"].map((m) => (
+              <button
+                key={m}
+                onClick={() => onQuickResponse(m)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "var(--bg-surface-2)",
+                  color: "#E2E8F0",
+                  border: "1px solid var(--border-subtle)",
+                  fontSize: "12px"
+                }}
+              >
+                {m}
+              </button>
+            ))}
           </>
         )}
 
         {/* Phase 2: Model & Year */}
         {phase === "ASK_MODEL_YEAR" && (
           <>
-            <button
-              onClick={() => onQuickResponse("2021 Civic")}
-              style={{
-                padding: "6px 13px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--accent-cyan)",
-                color: "#0F172A",
-                fontSize: "12px",
-                fontWeight: 600
-              }}
-            >
-              2021 Civic
-            </button>
-            <button
-              onClick={() => onQuickResponse("2022 RAV4")}
-              style={{
-                padding: "6px 13px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--bg-surface-2)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--border-subtle)",
-                fontSize: "12px"
-              }}
-            >
-              2022 RAV4
-            </button>
-            <button
-              onClick={() => onQuickResponse("2020 F-150")}
-              style={{
-                padding: "6px 13px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--bg-surface-2)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--border-subtle)",
-                fontSize: "12px"
-              }}
-            >
-              2020 F-150
-            </button>
-            <button
-              onClick={() => onQuickResponse("2022 3 Series")}
-              style={{
-                padding: "6px 13px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--bg-surface-2)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--border-subtle)",
-                fontSize: "12px"
-              }}
-            >
-              2022 3-Series
-            </button>
+            {(() => {
+              const brand = (confirmedMake || detectedMake || "").toLowerCase();
+              let models = ["2022 Sedan", "2021 SUV", "2020 Truck", "2023 Hybrid"];
+              if (brand.includes("honda")) models = ["2021 Civic", "2022 CR-V", "2020 Accord", "2023 Pilot"];
+              else if (brand.includes("ford")) models = ["2021 F-150", "2022 Explorer", "2020 Mustang", "2023 Escape"];
+              else if (brand.includes("bmw")) models = ["2021 3 Series", "2022 X5", "2020 5 Series", "2023 X3"];
+              else if (brand.includes("tesla")) models = ["2022 Model 3", "2023 Model Y", "2021 Model S", "2022 Model X"];
+              else if (brand.includes("toyota")) models = ["2022 RAV4", "2021 Camry", "2020 Corolla", "2022 Highlander"];
+              else if (brand.includes("chev")) models = ["2021 Silverado", "2022 Equinox", "2020 Tahoe", "2021 Malibu"];
+
+              return models.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => onQuickResponse(m)}
+                  style={{
+                    padding: "6px 13px",
+                    borderRadius: "var(--radius-pill)",
+                    background: "var(--bg-surface-2)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-bumblebee)",
+                    fontSize: "12px",
+                    fontWeight: 500
+                  }}
+                >
+                  {m}
+                </button>
+              ));
+            })()}
           </>
         )}
 

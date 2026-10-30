@@ -2,8 +2,8 @@
 import uuid
 from datetime import datetime
 from typing import Dict, Optional, Tuple
-from app.models.schemas import RepairSession, VerificationResult, AuditEvent
-from app.mock_data.rav4_data import RAV4_PROFILE, AIR_FILTER_PROCEDURE
+from app.models.schemas import RepairSession, VerificationResult, AuditEvent, DialogueState
+from app.mock_data.rav4_data import RAV4_PROFILE, AIR_FILTER_PROCEDURE, GENERIC_PROFILE, GENERIC_PROCEDURE
 
 # In-memory session store (can be backed by SQLite/PostgreSQL)
 _SESSION_STORE: Dict[str, RepairSession] = {}
@@ -13,23 +13,39 @@ class RepairStateMachine:
     """Manages lifecycle, step transitions, and state recovery of repair sessions."""
 
     @classmethod
-    def create_session(cls, vehicle_id: str, procedure_id: str) -> RepairSession:
+    def create_session(cls, vehicle_id: str = "generic_vehicle", procedure_id: str = "general_inspection") -> RepairSession:
         session_id = f"sess_{uuid.uuid4().hex[:10]}"
+        if vehicle_id == "toyota_rav4_2022":
+            prof = RAV4_PROFILE
+            proc = AIR_FILTER_PROCEDURE
+        else:
+            prof = GENERIC_PROFILE
+            proc = GENERIC_PROCEDURE
+
         session = RepairSession(
             session_id=session_id,
-            vehicle_profile=RAV4_PROFILE,
-            procedure=AIR_FILTER_PROCEDURE,
+            vehicle_profile=prof,
+            procedure=proc,
             current_step_number=1,
             completed_steps=[],
             observations=[],
             verifications={},
+            dialogue=DialogueState(
+                phase="SCAN_VEHICLE",
+                detected_make=None,
+                confirmed_make=None,
+                model=None,
+                year=None,
+                reported_issue=None,
+                messages=[]
+            ),
             audit_trail=[
                 AuditEvent(
                     timestamp=datetime.utcnow(),
                     action="SESSION_INITIALIZED",
                     step_number=1,
                     actor="SYSTEM",
-                    details={"vehicle": RAV4_PROFILE.model, "procedure": AIR_FILTER_PROCEDURE.title}
+                    details={"vehicle": prof.model, "procedure": proc.title}
                 )
             ]
         )

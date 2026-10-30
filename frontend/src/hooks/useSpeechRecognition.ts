@@ -2,24 +2,52 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: {
+    length: number;
+    [index: number]: {
+      [index: number]: { transcript: string };
+      isFinal?: boolean;
+    };
+  };
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((err: unknown) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
 export function useSpeechRecognition(onCommand?: (command: string) => void) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [isSupported, setIsSupported] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  const [isSupported] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const win = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+    return Boolean(win.SpeechRecognition || win.webkitSpeechRecognition);
+  });
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        setIsSupported(true);
-        const recog = new SpeechRecognition();
+      const win = window as unknown as {
+        SpeechRecognition?: new () => SpeechRecognitionInstance;
+        webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+      };
+      const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
+      if (SpeechRecognitionClass) {
+        const recog = new SpeechRecognitionClass();
         recog.continuous = true;
         recog.interimResults = true;
         recog.lang = "en-US";
 
-        recog.onresult = (event: any) => {
+        recog.onresult = (event: SpeechRecognitionEventLike) => {
           let currentTranscript = "";
           for (let i = event.resultIndex; i < event.results.length; i++) {
             currentTranscript += event.results[i][0].transcript;
@@ -27,14 +55,15 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
           const cleaned = currentTranscript.trim();
           setTranscript(cleaned);
 
-          if (event.results[event.results.length - 1].isFinal) {
+          const lastResult = event.results[event.results.length - 1];
+          if (lastResult?.isFinal) {
             if (onCommand && cleaned) {
               onCommand(cleaned.toLowerCase());
             }
           }
         };
 
-        recog.onerror = (err: any) => {
+        recog.onerror = (err: unknown) => {
           console.warn("Speech recognition error:", err);
           setIsListening(false);
         };

@@ -88,7 +88,7 @@ export interface AuditEvent {
   action: string;
   step_number?: number;
   actor: "SYSTEM" | "USER" | "META_MUSE" | "SAM_3_1";
-  details: Record<string, any>;
+  details: Record<string, unknown>;
 }
 
 export type DialoguePhase =

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { RepairSession } from "@/lib/types";
-import { X, FileCheck, CheckCircle2, ShieldCheck, Download, Share2 } from "lucide-react";
+import { X, FileCheck, Download } from "lucide-react";
 
 interface SessionAuditModalProps {
   session: RepairSession;

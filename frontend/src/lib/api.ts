@@ -2,9 +2,7 @@ import {
   RepairSession,
   ComponentObservation,
   VerificationResult,
-  PartCandidate,
-  DiagnosticHypothesis,
-  RepairProcedure
+  PartCandidate
 } from "./types";
 
 export function getApiBase(): string {
@@ -28,142 +26,47 @@ export function getApiBase(): string {
 
 // Grounded fallback dataset for offline/mock presentation
 const FALLBACK_SESSION: RepairSession = {
-  session_id: "sess_demo_rav4",
+  session_id: "sess_bumblebee_field",
   vehicle_profile: {
-    id: "toyota_rav4_2022",
-    make: "Toyota",
-    model: "RAV4",
-    year: 2022,
-    trim: "XLE AWD",
-    engine: "2.5L Dynamic Force I4 (A25A-FKS)",
-    transmission: "Direct Shift 8-Speed Automatic",
-    manual_name: "Toyota RAV4 Owner's Manual (Pub. OM42C33U, Section 8-3)",
-    diagram_url: "/vehicles/rav4/engine_bay_schematic.svg"
+    id: "generic_vehicle",
+    make: "",
+    model: "Vehicle",
+    year: 2024,
+    trim: "Inspection",
+    engine: "Automotive Powertrain",
+    transmission: "Standard Transmission",
+    manual_name: "Official Manufacturer Service Documentation",
+    diagram_url: "/vehicles/clean_car_view.svg"
   },
   procedure: {
-    id: "rav4_engine_air_filter",
-    vehicle_id: "toyota_rav4_2022",
-    title: "Engine Air Cleaner Element Inspection & Replacement",
-    category: "Routine Periodic Maintenance",
+    id: "general_inspection",
+    vehicle_id: "generic_vehicle",
+    title: "Automotive Diagnostic & Field Verification",
+    category: "Physical Field Inspection",
     difficulty: "BEGINNER",
-    estimated_minutes: 8,
-    tools_required: ["None (Hands-only operation; clean shop rag optional)"],
-    parts_required: ["Toyota Genuine Air Filter Element 17801-F0050 or equivalent"],
+    estimated_minutes: 10,
+    tools_required: ["Bumblebee Vision Camera Sensor"],
+    parts_required: ["Pending Vehicle & Issue Identification"],
     safety_critical: false,
-    source_manual: "Toyota RAV4 2022 Owner's Manual (Pub. OM42C33U)",
-    source_section: "Section 8-3: Do-it-yourself maintenance (Page 482)",
-    steps: [
-      {
-        step_number: 1,
-        title: "Locate the Engine Air Cleaner Assembly",
-        instruction: "Stand at the front of the vehicle. Locate the black rectangular air cleaner box on the driver's front side of the engine compartment.",
-        required_tools: ["None"],
-        safety_warning: "Turn ignition OFF and allow the engine to cool for at least 15 minutes before opening any engine compartment components.",
-        expected_visual_state: "Air cleaner housing in full camera frame, dual metal spring clips clearly visible on the right edge.",
-        reference_manual_page: 482,
-        reference_diagram_url: "/vehicles/rav4/step1_locate.svg",
-        verification_criteria: [
-          "Air cleaner housing centered in frame",
-          "Retaining clips visible",
-          "Lighting adequate for inspection"
-        ],
-        sample_frame_key: "step1_housing_overview"
-      },
-      {
-        step_number: 2,
-        title: "Release the Two Retaining Spring Clips",
-        instruction: "Grasp the two metal spring clamps located on the right side of the air cleaner housing. Press downward and outward until both clips snap open and drop clear of the upper lid.",
-        required_tools: ["Hands only"],
-        safety_warning: "Do not use screwdrivers or sharp pry tools; the spring clips are designed for thumb release to prevent cracking the plastic housing.",
-        expected_visual_state: "Both metal spring clips unfastened, hanging downward; upper housing seam loose.",
-        reference_manual_page: 482,
-        reference_diagram_url: "/vehicles/rav4/step2_unclip.svg",
-        verification_criteria: [
-          "Upper spring clip disengaged",
-          "Lower spring clip disengaged",
-          "No clip obstructing the seam"
-        ],
-        sample_frame_key: "step2_clips_released"
-      },
-      {
-        step_number: 3,
-        title: "Lift Upper Housing Lid to Expose Element",
-        instruction: "Lift the right edge of the upper air cleaner housing upward approximately 2 to 3 inches. Pivot on the rear plastic hinge tabs without disconnecting the flexible intake duct.",
-        required_tools: ["Hands only"],
-        safety_warning: "Do not forcefully yank the lid upward; excessive force can strain the mass airflow sensor wiring harness or tear the flexible intake boot.",
-        expected_visual_state: "Housing lid propped open, white pleated filter media and rubber perimeter gasket clearly visible.",
-        reference_manual_page: 483,
-        reference_diagram_url: "/vehicles/rav4/step3_lift.svg",
-        verification_criteria: [
-          "Gap between upper lid and lower box greater than 2 inches",
-          "Filter element exposed",
-          "Hinge tabs intact"
-        ],
-        sample_frame_key: "step3_lid_lifted"
-      },
-      {
-        step_number: 4,
-        title: "Extract and Inspect Old Filter Element",
-        instruction: "Carefully pull the rectangular filter element up and out from the lower housing. Visually inspect the underside pleats for deep dirt, insect debris, or oil fouling.",
-        required_tools: ["Hands only", "Optional clean rag to wipe lower tray"],
-        safety_warning: "Prevent dirt, leaves, or foreign debris from falling into the clean intake tract leading to the engine throttle body.",
-        expected_visual_state: "Filter element removed from tray; lower housing tray empty; filter element held in view showing pleat condition.",
-        reference_manual_page: 483,
-        reference_diagram_url: "/vehicles/rav4/step4_extract.svg",
-        verification_criteria: [
-          "Filter element completely removed from housing",
-          "Intake duct unobstructed",
-          "Lower box clean and free of loose leaves"
-        ],
-        sample_frame_key: "step4_element_extracted"
-      },
-      {
-        step_number: 5,
-        title: "Install New Genuine Air Cleaner Element",
-        instruction: "Orient the new filter element with the rounded corner aligned with the housing notch and rubber sealing lip facing upward. Seat the element firmly into the lower housing channel.",
-        required_tools: ["New Air Filter (Toyota 17801-F0050 or compatible)"],
-        safety_warning: "Ensure the rubber perimeter gasket sits completely flat in the groove. A pinched gasket allows unfiltered bypass air into the engine.",
-        expected_visual_state: "Fresh, clean white pleated filter element seated uniformly flush inside the lower housing channel.",
-        reference_manual_page: 484,
-        reference_diagram_url: "/vehicles/rav4/step5_install.svg",
-        verification_criteria: [
-          "New filter element centered in lower tray",
-          "Rubber gasket seated flush with zero gap or folding",
-          "Pleats uncrushed and clean"
-        ],
-        sample_frame_key: "step5_new_element_seated"
-      },
-      {
-        step_number: 6,
-        title: "Re-engage Rear Hinge Tabs & Lock Both Retaining Clips",
-        instruction: "Slide the rear locking tabs of the upper lid into the slots of the lower housing. Lower the lid flat, then pull both metal spring clips upward until they firmly snap over the lip.",
-        required_tools: ["Hands only"],
-        safety_warning: "Verify the rear tabs are engaged BEFORE latching the front clips; if rear tabs are disengaged, the airbox will leak unmetered air and trigger Check Engine light P0171.",
-        expected_visual_state: "Upper and lower housing halves tightly sealed together; both metal spring clips snapped upright in locked position.",
-        reference_manual_page: 484,
-        reference_diagram_url: "/vehicles/rav4/step6_sealed.svg",
-        verification_criteria: [
-          "Upper lid fully seated against lower box",
-          "Both metal spring clips engaged and tensioned",
-          "Zero gap visible along perimeter seam"
-        ],
-        sample_frame_key: "step6_housing_sealed"
-      }
-    ]
+    source_manual: "Official Manufacturer Service Documentation",
+    source_section: "Field Inspection Protocol",
+    steps: []
   },
   current_step_number: 1,
   completed_steps: [],
   observations: [],
   verifications: {},
-  audit_trail: [
-    {
-      timestamp: new Date().toISOString(),
-      action: "SESSION_INITIALIZED",
-      step_number: 1,
-      actor: "SYSTEM",
-      details: { vehicle: "Toyota RAV4 2022", procedure: "Engine Air Cleaner Element Replacement" }
-    }
-  ],
+  audit_trail: [],
+  dialogue: {
+    phase: "SCAN_VEHICLE",
+    detected_make: undefined,
+    confirmed_make: undefined,
+    model: undefined,
+    year: undefined,
+    reported_issue: undefined,
+    active_step: 1,
+    messages: []
+  },
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   status: "IN_PROGRESS"
@@ -339,7 +242,7 @@ const FALLBACK_PARTS: PartCandidate[] = [
   }
 ];
 
-export async function createSession(vehicleId = "toyota_rav4_2022", procedureId = "rav4_engine_air_filter"): Promise<RepairSession> {
+export async function createSession(vehicleId = "generic_vehicle", procedureId = "general_inspection"): Promise<RepairSession> {
   try {
     const res = await fetch(`${getApiBase()}/sessions`, {
       method: "POST",
@@ -415,9 +318,15 @@ export async function verifyStepState(
   };
 }
 
-export async function fetchParts(vehicleId = "toyota_rav4_2022"): Promise<PartCandidate[]> {
+export async function fetchParts(vehicleId = "generic_vehicle", make = "", model = "", year = 2022): Promise<PartCandidate[]> {
   try {
-    const res = await fetch(`${getApiBase()}/parts?vehicle_id=${vehicleId}`);
+    const params = new URLSearchParams({
+      vehicle_id: vehicleId,
+      ...(make ? { make } : {}),
+      ...(model ? { model } : {}),
+      ...(year ? { year: String(year) } : {})
+    });
+    const res = await fetch(`${getApiBase()}/parts?${params.toString()}`);
     if (res.ok) return await res.json();
   } catch (err) {
     console.warn("Using offline fallback parts:", err);
@@ -433,7 +342,7 @@ export async function sendConversationTurn(
   text: string;
   speech_text: string;
   phase: string;
-  payload: any;
+  payload: Record<string, unknown>;
   session: RepairSession;
 }> {
   try {
@@ -451,12 +360,12 @@ export async function sendConversationTurn(
     console.warn("Using offline conversation turn fallback:", err);
   }
 
-  // Graceful offline fallback
+  // Graceful offline fallback — never hardcoding a brand
   return {
-    text: "I've analyzed the camera feed and identified a **Toyota** vehicle. Is this correct?",
-    speech_text: "I detect a Toyota vehicle from the camera. Is that right?",
+    text: "Vehicle frame captured in camera view. What is the **make or brand** of your vehicle? (e.g. Honda, Ford, BMW, Toyota, Tesla, Chevrolet)",
+    speech_text: "Vehicle frame captured in camera view. What is the make or brand of your vehicle?",
     phase: "CONFIRM_MAKE",
-    payload: { detected_make: "Toyota" },
+    payload: { detected_make: null },
     session: FALLBACK_SESSION
   };
 }

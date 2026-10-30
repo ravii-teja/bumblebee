@@ -361,6 +361,34 @@ RAV4_DIAGNOSTICS = [
 ]
 
 
+GENERIC_PROFILE = VehicleProfile(
+    id="generic_vehicle",
+    make="",
+    model="Vehicle",
+    year=2024,
+    trim="Inspection",
+    engine="Automotive Powertrain",
+    transmission="Standard Transmission",
+    manual_name="Official Manufacturer Service Documentation",
+    diagram_url="/vehicles/clean_car_view.svg"
+)
+
+GENERIC_PROCEDURE = RepairProcedure(
+    id="general_inspection",
+    vehicle_id="generic_vehicle",
+    title="Automotive Diagnostic & Field Verification",
+    category="Physical Field Inspection",
+    difficulty="BEGINNER",
+    estimated_minutes=10,
+    tools_required=["Bumblebee Vision Camera Sensor"],
+    parts_required=["Pending Vehicle & Issue Identification"],
+    safety_critical=False,
+    source_manual="Official Manufacturer Service Documentation",
+    source_section="Field Inspection Protocol",
+    steps=AIR_FILTER_PROCEDURE.steps
+)
+
+
 def create_dynamic_vehicle_profile(make: str, model: str, year: int) -> VehicleProfile:
     """Generates an accurate vehicle profile for any detected vehicle."""
     make_clean = make.strip().title()

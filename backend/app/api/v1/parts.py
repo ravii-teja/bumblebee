@@ -1,5 +1,5 @@
 """Parts catalog and fitment verification endpoints."""
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter
 from app.models.schemas import PartCandidate
 from app.services.parts_finder import PartsFinderService
@@ -9,5 +9,11 @@ parts_service = PartsFinderService()
 
 
 @router.get("", response_model=List[PartCandidate])
-def get_parts(vehicle_id: str = "toyota_rav4_2022", component: str = "air_filter"):
-    return parts_service.search_compatible_parts(vehicle_id, component)
+def get_parts(
+    vehicle_id: str = "generic_vehicle",
+    component: str = "air_filter",
+    make: Optional[str] = None,
+    model: Optional[str] = None,
+    year: Optional[int] = None
+):
+    return parts_service.search_compatible_parts(vehicle_id, component, make, model, year)

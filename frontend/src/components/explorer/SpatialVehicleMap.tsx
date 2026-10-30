@@ -2,7 +2,7 @@
 
 import React from "react";
 import { ComponentObservation } from "@/lib/types";
-import { X, ShieldAlert, CheckCircle2, Info, Layers } from "lucide-react";
+import { X, ShieldAlert, CheckCircle2, Layers } from "lucide-react";
 
 interface SpatialVehicleMapProps {
   components: ComponentObservation[];

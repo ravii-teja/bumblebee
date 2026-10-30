@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { RepairStep, VerificationResult } from "@/lib/types";
-import { CheckCircle2, AlertTriangle, Eye, Shield, ArrowRight, RotateCcw, Wrench } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Eye, Wrench } from "lucide-react";
 
 interface StepGuidanceCardProps {
   step: RepairStep;
@@ -10,7 +10,7 @@ interface StepGuidanceCardProps {
   verification?: VerificationResult;
   onVerify: () => Promise<void>;
   onManualOverride: () => Promise<void>;
-  onReset: () => void;
+  onReset?: () => void;
   isVerifying: boolean;
 }
 
@@ -20,7 +20,6 @@ export function StepGuidanceCard({
   verification,
   onVerify,
   onManualOverride,
-  onReset,
   isVerifying
 }: StepGuidanceCardProps) {
   const isVerified = verification?.status === "VERIFIED";

@@ -9,7 +9,7 @@ interface VerificationBannerProps {
   onDismiss?: () => void;
 }
 
-export function VerificationBanner({ result, onDismiss }: VerificationBannerProps) {
+export function VerificationBanner({ result }: VerificationBannerProps) {
   if (!result) return null;
 
   const isVerified = result.status === "VERIFIED";

@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [hasCamera, setHasCamera] = useState<boolean>(false);
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -12,10 +14,20 @@ export function useCamera() {
   const startCamera = useCallback(async () => {
     try {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-        setHasCamera(false);
+        queueMicrotask(() => {
+          setHasCamera(false);
+          setError("Camera API not available in this environment");
+        });
         return;
       }
-      const stream = await navigator.mediaDevices.getUserMedia({
+
+      // Stop any existing stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: facingMode },
           width: { ideal: 1920 },
@@ -23,29 +35,50 @@ export function useCamera() {
         },
         audio: false
       });
+
+      streamRef.current = mediaStream;
+      setStream(mediaStream);
+      setHasCamera(true);
+      setIsStreaming(true);
+      setError(null);
+
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setIsStreaming(true);
-        setHasCamera(true);
-        setError(null);
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play().catch((e) => {
+          console.warn("Video play interrupted/pending:", e);
+        });
       }
-    } catch (err: any) {
-      console.warn("Camera stream not available (falling back to test bench mode):", err);
+    } catch (err: unknown) {
+      console.warn("Camera stream access issue (falling back to simulation view):", err);
       setHasCamera(false);
       setIsStreaming(false);
-      setError(err.message || "Camera access denied");
+      const isNotAllowed = (err instanceof DOMException && err.name === "NotAllowedError") || 
+        (typeof err === "object" && err !== null && "name" in err && (err as { name: string }).name === "NotAllowedError");
+      const message = err instanceof Error ? err.message : "Camera access denied";
+      setError(isNotAllowed ? "Camera permission denied" : message);
     }
   }, [facingMode]);
 
   const stopCamera = useCallback(() => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-      setIsStreaming(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setStream(null);
+    setIsStreaming(false);
+    setHasCamera(false);
   }, []);
+
+  // Ensure video element gets stream if mounted after getUserMedia resolves
+  useEffect(() => {
+    if (videoRef.current && stream && videoRef.current.srcObject !== stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch((e) => console.warn("Auto-attaching video stream:", e));
+    }
+  }, [stream]);
 
   const captureFrame = useCallback((): string | null => {
     if (!videoRef.current) return null;
@@ -61,15 +94,28 @@ export function useCamera() {
     return canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
   }, []);
 
+  const toggleFacingMode = useCallback(() => {
+    setFacingMode((m) => (m === "environment" ? "user" : "environment"));
+  }, []);
+
   useEffect(() => {
-    startCamera();
+    let unmounted = false;
+    const init = async () => {
+      await Promise.resolve();
+      if (!unmounted) {
+        await startCamera();
+      }
+    };
+    void init();
     return () => {
+      unmounted = true;
       stopCamera();
     };
   }, [startCamera, stopCamera]);
 
   return {
     videoRef,
+    stream,
     hasCamera,
     isStreaming,
     error,
@@ -77,6 +123,6 @@ export function useCamera() {
     stopCamera,
     captureFrame,
     facingMode,
-    toggleFacingMode: () => setFacingMode((m) => (m === "environment" ? "user" : "environment"))
+    toggleFacingMode
   };
 }

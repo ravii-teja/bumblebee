@@ -1,4 +1,9 @@
 """FastAPI Main Application Entrypoint for Bumblebee."""
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.sessions import router as sessions_router

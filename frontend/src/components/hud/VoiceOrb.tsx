@@ -1,16 +1,16 @@
 "use client";
 
 import React from "react";
-import { Mic, MicOff, Radio } from "lucide-react";
+import { Mic, MicOff } from "lucide-react";
 
 interface VoiceOrbProps {
   isListening: boolean;
   transcript: string;
-  isSupported: boolean;
+  isSupported?: boolean;
   onToggle: () => void;
 }
 
-export function VoiceOrb({ isListening, transcript, isSupported, onToggle }: VoiceOrbProps) {
+export function VoiceOrb({ isListening, transcript, onToggle }: VoiceOrbProps) {
   return (
     <div
       id="hud-voice-orb-container"

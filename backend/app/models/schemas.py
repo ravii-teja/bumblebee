@@ -142,7 +142,7 @@ class DialogueMessage(BaseModel):
 
 class DialogueState(BaseModel):
     phase: DialoguePhase = "SCAN_VEHICLE"
-    detected_make: Optional[str] = "Toyota"
+    detected_make: Optional[str] = None
     confirmed_make: Optional[str] = None
     model: Optional[str] = None
     year: Optional[int] = None
@@ -170,8 +170,8 @@ class RepairSession(BaseModel):
 
 # Request / Response Schemas
 class CreateSessionRequest(BaseModel):
-    vehicle_id: str = "toyota_rav4_2022"
-    procedure_id: str = "rav4_engine_air_filter"
+    vehicle_id: str = "generic_vehicle"
+    procedure_id: str = "general_inspection"
 
 
 class VisionIdentifyRequest(BaseModel):

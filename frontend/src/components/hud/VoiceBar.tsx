@@ -8,15 +8,14 @@ interface VoiceBarProps {
   transcript: string;
   isSupported: boolean;
   onToggle: () => void;
-  onVoiceCommand: (cmd: string) => void;
+  onVoiceCommand?: (cmd: string) => void;
 }
 
 export function VoiceBar({
   isListening,
   transcript,
   isSupported,
-  onToggle,
-  onVoiceCommand
+  onToggle
 }: VoiceBarProps) {
   if (!isSupported) return null;
 

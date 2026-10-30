@@ -2,7 +2,7 @@
 
 import React from "react";
 import { VehicleProfile } from "@/lib/types";
-import { Cpu, Wrench, BookOpen, FileText, Volume2, VolumeX, ShieldCheck } from "lucide-react";
+import { Cpu, Wrench, BookOpen, FileText, Volume2, VolumeX } from "lucide-react";
 
 interface MinimalTopBarProps {
   vehicle: VehicleProfile;

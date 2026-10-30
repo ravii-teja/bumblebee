@@ -1,5 +1,4 @@
 """Automated tests for MUSE FIELD API & state machine."""
-import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.safety_guard import SafetyGuard
@@ -74,7 +73,7 @@ def test_multimodal_conversation_and_solution_search():
     assert scan_turn.status_code == 200
     data1 = scan_turn.json()
     assert data1["phase"] == "CONFIRM_MAKE"
-    assert "detected" in data1["text"].lower()
+    assert "vehicle" in data1["text"].lower() or data1["payload"]["detection_meta"]["detected"] is True
 
     # 3. Model & year input turn
     model_turn = client.post("/api/v1/conversation/turn", json={

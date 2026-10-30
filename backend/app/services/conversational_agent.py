@@ -131,16 +131,17 @@ class ConversationalAgentService:
                 image_base64=image_base64,
                 context_hint=input_clean
             )
-            detected = detection.get("make") or ("Honda" if "honda" in input_lower else "Toyota" if "toyota" in input_lower else "Vehicle")
+            detected = detection.get("make")
+            evidence = detection.get("visual_evidence", "Front vehicle profile aligned")
             dialogue.detected_make = detected
             dialogue.phase = "CONFIRM_MAKE"
 
-            if detected in KNOWN_MAKES:
-                text = f"Visual analysis detected a **{detected}** vehicle. Is this correct, or what is your vehicle's make?"
+            if detected and detected in KNOWN_MAKES:
+                text = f"Visual analysis detected a **{detected}** vehicle ({evidence}). Is this correct?"
                 speech = f"Visual analysis detected a {detected} vehicle. Is this correct, or what is your vehicle's make?"
             else:
-                text = "Vehicle detected in camera frame. What is the **make or brand** of your vehicle?"
-                speech = "Vehicle detected in camera frame. What is the make or brand of your vehicle?"
+                text = f"Vehicle frame captured in camera view ({evidence}).\n\nWhat is the **make or brand** of your vehicle? (e.g. Honda, Ford, BMW, Toyota, Tesla, Chevrolet)"
+                speech = "Vehicle frame captured in camera view. What is the make or brand of your vehicle?"
 
             return text, speech, "CONFIRM_MAKE", {"detected_make": detected, "detection_meta": detection}
 
@@ -149,7 +150,7 @@ class ConversationalAgentService:
         # -------------------------------------------------------------
         if phase == "CONFIRM_MAKE":
             if any(w in input_lower for w in ["yes", "yeah", "yep", "correct", "right", "confirm", "true"]):
-                make = dialogue.detected_make or "Vehicle"
+                make = dialogue.detected_make or extracted_make or "Vehicle"
                 dialogue.confirmed_make = make
                 dialogue.phase = "ASK_MODEL_YEAR"
                 text = f"Great! What **model** and **year** is your {make}?"
@@ -158,7 +159,7 @@ class ConversationalAgentService:
             else:
                 # User provided another make
                 new_make = extracted_make or input_clean.replace("no", "").replace("it's a", "").replace("it is a", "").strip().title()
-                if not new_make:
+                if not new_make or len(new_make) < 2:
                     new_make = "Vehicle"
                 dialogue.confirmed_make = new_make
                 dialogue.phase = "ASK_MODEL_YEAR"
@@ -273,8 +274,17 @@ class ConversationalAgentService:
             session.current_step_number = 1
             session.completed_steps = []
 
-            # Load SAM wireframe polygon coordinates for target component
-            session.observations = list(RAV4_COMPONENTS)
+            # Load SAM wireframe polygon coordinates for target component (dynamically tailored to vehicle)
+            dynamic_comps = []
+            for c in RAV4_COMPONENTS:
+                comp_copy = c.model_copy()
+                if c.component_id == "air_cleaner_assembly":
+                    comp_copy.name = f"{veh.make} {veh.model} Engine Air Cleaner Housing"
+                    comp_copy.description = f"Houses the replaceable air filter element that cleans intake air for the {veh.make} {veh.model} engine."
+                elif c.component_id == "coolant_reservoir":
+                    comp_copy.observed_state = f"Translucent tank, fluid level nominal ({veh.make} OEM approved coolant)"
+                dynamic_comps.append(comp_copy)
+            session.observations = dynamic_comps
 
             first_step = steps[0]
             text = (

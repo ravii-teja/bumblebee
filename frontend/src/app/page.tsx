@@ -13,7 +13,7 @@ import { PartsDrawer } from "@/components/parts/PartsDrawer";
 import { EvidenceModal } from "@/components/evidence/EvidenceModal";
 import { SessionAuditModal } from "@/components/evidence/SessionAuditModal";
 import { BumblebeeBrandBadge } from "@/components/hud/BumblebeeBrandBadge";
-import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen } from "lucide-react";
+import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera } from "lucide-react";
 
 export default function BumblebeeChamber() {
   const [session, setSession] = useState<RepairSession | null>(null);
@@ -28,8 +28,18 @@ export default function BumblebeeChamber() {
   // Conversational state: initially in standby SCAN_VEHICLE
   const [phase, setPhase] = useState<DialoguePhase>("SCAN_VEHICLE");
   const [aiMessage, setAiMessage] = useState<string>("");
+  const [useSimulation, setUseSimulation] = useState(false);
 
-  const { videoRef, hasCamera, captureFrame } = useCamera();
+  const {
+    videoRef,
+    stream,
+    hasCamera,
+    isStreaming,
+    facingMode,
+    toggleFacingMode,
+    startCamera,
+    captureFrame
+  } = useCamera();
 
   // Text-to-Speech synthesizer
   const speakText = useCallback(
@@ -111,7 +121,7 @@ export default function BumblebeeChamber() {
     [phase, handleTurn]
   );
 
-  const { isListening, transcript, isSupported, toggleListening } = useSpeechRecognition(handleTurn);
+  const { isListening, transcript, toggleListening } = useSpeechRecognition(handleTurn);
 
   // Initialize Session quietly without injecting hardcoded dialogue
   useEffect(() => {
@@ -162,19 +172,19 @@ export default function BumblebeeChamber() {
   const getTopInstruction = () => {
     switch (phase) {
       case "SCAN_VEHICLE":
-        return "Point at a vehicle";
+        return "Point camera at car & tap shutter";
       case "CONFIRM_MAKE":
-        return "Confirm Vehicle Brand";
+        return "Confirm Vehicle Make";
       case "ASK_MODEL_YEAR":
         return "Specify Model & Year";
       case "ASK_ISSUE":
         return "Describe Issue or Symptom";
       case "ACTIVE_REPAIR":
-        return `Step ${session?.current_step_number || 1} of 6 • ${session?.vehicle_profile.make || "Vehicle"} Guide`;
+        return `Step ${session?.current_step_number || 1} of ${session?.procedure.steps.length || 6} • ${session?.vehicle_profile.make || "Vehicle"} Guide`;
       case "COMPLETED":
         return "Procedure Completed";
       default:
-        return "Point at a vehicle";
+        return "Point camera at car & tap shutter";
     }
   };
 
@@ -215,19 +225,23 @@ export default function BumblebeeChamber() {
         overflow: "hidden"
       }}
     >
-      {/* 1. Fullscreen Camera Viewport with Blueprint Wireframe Background */}
+      {/* 1. Fullscreen Live AR Camera Viewport (Primary AR Ground) */}
       <CameraViewport
         videoRef={videoRef}
+        stream={stream}
         hasCamera={hasCamera}
-        isStreaming={true}
+        isStreaming={isStreaming}
         components={components}
         selectedComponent={selectedComponent}
         stepNumber={session.current_step_number}
         phase={phase}
-        useSimulation={!hasCamera}
+        facingMode={facingMode}
+        onStartCamera={startCamera}
+        useSimulation={useSimulation}
+        onToggleSimulation={() => setUseSimulation((s) => !s)}
       />
 
-      {/* 2. Responsive Bumblebee Top Navigation Header */}
+      {/* 2. Responsive Bumblebee Top Navigation Header (AR Overlay) */}
       <header
         id="bumblebee-top-bar"
         style={{
@@ -251,7 +265,7 @@ export default function BumblebeeChamber() {
                 ? `${session.vehicle_profile.year || 2022} ${session.vehicle_profile.make} ${session.vehicle_profile.model}`
                 : undefined
             }
-            isLive={hasCamera || true}
+            isLive={hasCamera}
           />
         </div>
 
@@ -281,7 +295,7 @@ export default function BumblebeeChamber() {
           </span>
         </div>
 
-        {/* Top-Right: Quick Actions (Parts, Manual, Voice, Dossier) */}
+        {/* Top-Right: Quick Actions (Camera Flip, Parts, Manual, Voice, Dossier) */}
         <div
           style={{
             display: "flex",
@@ -291,6 +305,32 @@ export default function BumblebeeChamber() {
             flexShrink: 0
           }}
         >
+          {/* Camera Flip Button */}
+          {hasCamera && (
+            <button
+              onClick={toggleFacingMode}
+              className="glass-panel"
+              title="Flip Front / Rear Camera"
+              style={{
+                height: 38,
+                padding: "0 12px",
+                borderRadius: "var(--radius-pill)",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--border-subtle)",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 500,
+                transition: "var(--transition-fast)"
+              }}
+            >
+              <SwitchCamera size={14} />
+              <span className="hide-on-mobile">{facingMode === "environment" ? "Rear" : "Front"}</span>
+            </button>
+          )}
+
           {/* Quick Parts Drawer Toggle */}
           <button
             onClick={() => setActiveModal(activeModal === "parts" ? "none" : "parts")}
@@ -435,6 +475,8 @@ export default function BumblebeeChamber() {
               totalSteps={session.procedure.steps.length}
               verification={stepVerification}
               isVerifying={isVerifying}
+              detectedMake={session.dialogue?.detected_make || undefined}
+              confirmedMake={session.dialogue?.confirmed_make || session.vehicle_profile?.make || undefined}
               onQuickResponse={(text) => handleTurn(text)}
               onVerifyStep={handleVerifyStep}
               onNextStep={handleNextStep}
@@ -456,16 +498,17 @@ export default function BumblebeeChamber() {
 
       {/* 7. Drawers & Modals */}
       {activeModal === "parts" && (
-        <PartsDrawer onClose={() => setActiveModal("none")} />
+        <PartsDrawer vehicle={session.vehicle_profile} onClose={() => setActiveModal("none")} />
       )}
 
       {activeModal === "manual" && (
-        <EvidenceModal onClose={() => setActiveModal("none")} />
+        <EvidenceModal vehicle={session.vehicle_profile} onClose={() => setActiveModal("none")} />
       )}
 
       {activeModal === "summary" && (
         <SessionAuditModal session={session} onClose={() => setActiveModal("none")} />
       )}
+
     </main>
   );
 }

@@ -11,7 +11,7 @@ from app.models.schemas import RepairProcedure, RepairStep, DiagnosticHypothesis
 
 logger = logging.getLogger(__name__)
 
-META_API_KEY = os.getenv("META_API_KEY", "")
+META_API_KEY = os.getenv("META_API_KEY") or os.getenv("LLM_API_KEY") or ""
 META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.together.xyz/v1/chat/completions")
 META_MODEL_NAME = os.getenv("META_MODEL_NAME", "meta-llama/Llama-Vision-Free")
 
