@@ -26,20 +26,29 @@ from app.mock_data.rav4_data import (
 
 logger = logging.getLogger(__name__)
 
-META_API_KEY = os.getenv("META_API_KEY") or os.getenv("LLM_API_KEY") or ""
-META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.together.xyz/v1/chat/completions")
-META_MODEL_NAME = os.getenv("META_MODEL_NAME", "meta-llama/Llama-Vision-Free")
+META_API_KEY = (
+    os.getenv("META_API_KEY")
+    or os.getenv("LLM_API_KEY")
+    or "LLM_1150423010998636_cojkhUtvkYeNsqIeq67Dn0PbhwY"
+)
+META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.meta.ai/v1/chat/completions")
+META_MODEL_NAME = os.getenv("META_MODEL_NAME", "muse-wonder-1.0")
 
 
 async def ask_meta_llm(system_context: str, user_question: str) -> Optional[str]:
     """Queries Meta Llama API for real-time conversational voice responses."""
-    api_key = os.getenv("META_API_KEY") or os.getenv("LLM_API_KEY") or ""
+    api_key = (
+        os.getenv("META_API_KEY")
+        or os.getenv("LLM_API_KEY")
+        or "LLM_1150423010998636_cojkhUtvkYeNsqIeq67Dn0PbhwY"
+    )
     if not api_key:
         return None
     try:
         headers = {
             "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "MetaHackathon/2026 Bumblebee"
         }
         messages = [
             {
@@ -51,15 +60,16 @@ async def ask_meta_llm(system_context: str, user_question: str) -> Optional[str]
         payload = {
             "model": META_MODEL_NAME,
             "messages": messages,
-            "max_tokens": 180,
-            "temperature": 0.4
+            "max_tokens": 1500,
+            "temperature": 0.3
         }
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=18.0) as client:
             resp = await client.post(META_API_ENDPOINT, headers=headers, json=payload)
             if resp.status_code == 200:
-                answer = resp.json()["choices"][0]["message"]["content"].strip()
-                clean_ans = answer.replace("**", "").replace("##", "").strip()
-                return clean_ans
+                answer = resp.json()["choices"][0]["message"]["content"]
+                if answer:
+                    clean_ans = answer.replace("**", "").replace("##", "").strip()
+                    return clean_ans
     except Exception as e:
         logger.warning(f"Meta LLM voice conversational turn failed: {e}")
     return None
@@ -157,7 +167,7 @@ class ConversationalAgentService:
             return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
 
         # -------------------------------------------------------------
-        # Phase 1: SCAN_VEHICLE -> Analyze Camera or Ask Make
+        # Phase 1: SCAN_VEHICLE -> Analyze Camera Image & Online Search
         # -------------------------------------------------------------
         if phase == "SCAN_VEHICLE":
             # If user spoke/typed a make directly
@@ -165,6 +175,7 @@ class ConversationalAgentService:
                 dialogue.detected_make = extracted_make
                 dialogue.confirmed_make = extracted_make
                 dialogue.phase = "ASK_MODEL_YEAR"
+                session.vehicle_profile.make = extracted_make
                 text = f"Understood, **{extracted_make}**. What model and year is your {extracted_make}?"
                 speech = f"Understood, {extracted_make}. What model and year is your {extracted_make}?"
                 return text, speech, "ASK_MODEL_YEAR", {"make": extracted_make}
@@ -175,24 +186,83 @@ class ConversationalAgentService:
                 image_base64=image_base64,
                 context_hint=input_clean
             )
-            detected = detection.get("make")
-            evidence = detection.get("visual_evidence", "Front vehicle profile aligned")
-            dialogue.detected_make = detected
-            dialogue.phase = "CONFIRM_MAKE"
+            detected_make = detection.get("make")
+            detected_model = detection.get("model")
+            detected_year = detection.get("year") or 2022
+            evidence = detection.get("visual_evidence", "Online visual search identified vehicle profile")
 
-            if detected and detected in KNOWN_MAKES:
-                text = f"Visual analysis detected a **{detected}** vehicle ({evidence}). Is this correct?"
-                speech = f"Visual analysis detected a {detected} vehicle. Is this correct, or what is your vehicle's make?"
+            # 1. Both Make & Model identified from camera image search
+            if detected_make and detected_model:
+                dialogue.confirmed_make = detected_make
+                dialogue.detected_make = detected_make
+                dialogue.model = detected_model
+                dialogue.year = detected_year
+                dialogue.phase = "ASK_ISSUE"
+
+                # Update session vehicle profile dynamically
+                session.vehicle_profile = create_dynamic_vehicle_profile(
+                    make=detected_make,
+                    model=detected_model,
+                    year=detected_year
+                )
+
+                text = (
+                    f"Visual search identified vehicle: **{detected_year} {detected_make} {detected_model}** "
+                    f"({evidence}).\n\nWhat issue or symptom are you experiencing with this vehicle?"
+                )
+                speech = f"Identified {detected_year} {detected_make} {detected_model} from visual search. What issue or symptom are you experiencing with this vehicle?"
+                return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump(), "detection_meta": detection}
+
+            # 2. Make identified, ask for model and year
+            elif detected_make:
+                dialogue.confirmed_make = detected_make
+                dialogue.detected_make = detected_make
+                dialogue.phase = "ASK_MODEL_YEAR"
+                session.vehicle_profile.make = detected_make
+
+                text = (
+                    f"Visual search identified vehicle make: **{detected_make}** ({evidence}).\n\n"
+                    f"What **model** and **year** is your {detected_make}?"
+                )
+                speech = f"Visual search identified vehicle make as {detected_make}. What model and year is your {detected_make}?"
+                return text, speech, "ASK_MODEL_YEAR", {"make": detected_make, "detection_meta": detection}
+
+            # 3. Frame scanned but make inconclusive
             else:
-                text = f"Vehicle frame captured in camera view ({evidence}).\n\nWhat is the **make or brand** of your vehicle? (e.g. Honda, Ford, BMW, Toyota, Tesla, Chevrolet)"
-                speech = "Vehicle frame captured in camera view. What is the make or brand of your vehicle?"
-
-            return text, speech, "CONFIRM_MAKE", {"detected_make": detected, "detection_meta": detection}
+                dialogue.detected_make = None
+                dialogue.phase = "CONFIRM_MAKE"
+                text = (
+                    f"Visual frame scanned ({evidence}).\n\n"
+                    f"Vehicle emblem or model not distinctly identified. Please point camera at the front grille or badge — or tell me your vehicle's **make and model** (e.g. Toyota RAV4, BMW M4, Honda Civic)."
+                )
+                speech = "Visual frame scanned. What is the make or brand of your vehicle?"
+                return text, speech, "CONFIRM_MAKE", {"detected_make": None, "detection_meta": detection}
 
         # -------------------------------------------------------------
-        # Phase 2: CONFIRM_MAKE
+        # Phase 2: CONFIRM_MAKE (or Process Uploaded Image in this phase)
         # -------------------------------------------------------------
         if phase == "CONFIRM_MAKE":
+            if image_base64:
+                from app.services.meta_muse import MetaMuseService
+                detection = await MetaMuseService.detect_vehicle_make_model(image_base64=image_base64)
+                det_make = detection.get("make")
+                det_model = detection.get("model")
+                det_year = detection.get("year") or 2022
+                if det_make and det_model:
+                    dialogue.confirmed_make = det_make
+                    dialogue.detected_make = det_make
+                    dialogue.model = det_model
+                    dialogue.year = det_year
+                    dialogue.phase = "ASK_ISSUE"
+                    session.vehicle_profile = create_dynamic_vehicle_profile(
+                        make=det_make,
+                        model=det_model,
+                        year=det_year
+                    )
+                    text = f"Visual search identified **{det_year} {det_make} {det_model}** ({detection.get('visual_evidence', '')}).\n\nWhat issue or symptom are you experiencing?"
+                    speech = f"Identified {det_year} {det_make} {det_model} from visual search. What issue or symptom are you experiencing?"
+                    return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
+
             if any(w in input_lower for w in ["yes", "yeah", "yep", "correct", "right", "confirm", "true"]):
                 make = dialogue.detected_make or extracted_make or "Vehicle"
                 dialogue.confirmed_make = make
@@ -207,6 +277,7 @@ class ConversationalAgentService:
                     new_make = "Vehicle"
                 dialogue.confirmed_make = new_make
                 dialogue.phase = "ASK_MODEL_YEAR"
+                session.vehicle_profile.make = new_make
                 text = f"Understood, **{new_make}**. What model and year is this vehicle?"
                 speech = f"Understood, {new_make}. What model and year is this vehicle?"
                 return text, speech, "ASK_MODEL_YEAR", {"confirmed_make": new_make}

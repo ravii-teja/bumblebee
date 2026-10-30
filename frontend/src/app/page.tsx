@@ -166,12 +166,13 @@ export default function BumblebeeChamber() {
 
   // Camera Shutter Click
   const handleCameraScan = async () => {
+    const frame = captureFrame();
     if (phase === "SCAN_VEHICLE") {
-      await handleTurn("identify vehicle from camera image");
+      await handleTurn("identify vehicle from camera image", frame || undefined);
     } else if (phase === "ACTIVE_REPAIR") {
       await handleVerifyStep();
     } else {
-      await handleTurn("scan frame");
+      await handleTurn("scan frame", frame || undefined);
     }
   };
 
@@ -271,6 +272,7 @@ export default function BumblebeeChamber() {
         onStartCamera={startCamera}
         useSimulation={useSimulation}
         onToggleSimulation={() => setUseSimulation((s) => !s)}
+        isProcessing={isProcessing}
       />
 
       {/* 2. Responsive Bumblebee Top Navigation Header (AR Overlay) */}
@@ -466,7 +468,7 @@ export default function BumblebeeChamber() {
       <VerificationBanner result={latestVerification} />
 
       {/* 4. Interactive Voice Conversation Pill */}
-      {(isVoiceActive || transcript || isSpeaking) && (
+      {(isVoiceActive || transcript || isSpeaking) && !isProcessing && (
         <div
           className="glass-panel"
           style={{
@@ -510,6 +512,79 @@ export default function BumblebeeChamber() {
               ? `“${transcript}”`
               : "🎙️ Listening... Speak naturally"}
           </span>
+        </div>
+      )}
+
+      {/* 4.5. Active Processing & Online Visual Search Status Indicator */}
+      {isProcessing && (
+        <div
+          className="glass-panel"
+          style={{
+            position: "absolute",
+            bottom: "clamp(96px, 13vh, 120px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 35,
+            padding: "9px 22px",
+            borderRadius: "var(--radius-pill)",
+            fontSize: "12px",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            background: "rgba(10, 13, 20, 0.95)",
+            border: "1px solid rgba(56, 189, 248, 0.6)",
+            boxShadow: "0 8px 30px rgba(56, 189, 248, 0.35)",
+            color: "var(--accent-cyan)",
+            maxWidth: "min(440px, calc(100vw - 32px))"
+          }}
+        >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              backgroundColor: "#38BDF8",
+              boxShadow: "0 0 10px #38BDF8",
+              animation: "pulse-bumblebee 1s infinite"
+            }}
+          />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            Searching vehicle make & model online via Meta Vision...
+          </span>
+        </div>
+      )}
+
+      {/* 4.6. Scanner Guidance Pill in Initial Phase */}
+      {phase === "SCAN_VEHICLE" && !isProcessing && !isVoiceActive && !isSpeaking && !transcript && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "clamp(96px, 13vh, 120px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 25,
+            pointerEvents: "none"
+          }}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              padding: "7px 18px",
+              borderRadius: "var(--radius-pill)",
+              fontSize: "12px",
+              fontWeight: 500,
+              background: "rgba(10, 13, 20, 0.88)",
+              border: "1px solid rgba(250, 204, 21, 0.3)",
+              color: "var(--text-secondary)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}
+          >
+            <span style={{ color: "var(--bumblebee-yellow)" }}>⦿</span>
+            <span>Tap Shutter or Upload Photo to identify vehicle</span>
+          </div>
         </div>
       )}
 

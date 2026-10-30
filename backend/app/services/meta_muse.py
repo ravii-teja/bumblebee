@@ -12,9 +12,14 @@ from app.mock_data.rav4_data import RAV4_COMPONENTS, RAV4_DIAGNOSTICS, AIR_FILTE
 
 logger = logging.getLogger(__name__)
 
-META_API_KEY = os.getenv("META_API_KEY") or os.getenv("TOGETHER_API_KEY") or os.getenv("LLM_API_KEY") or ""
-META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.together.xyz/v1/chat/completions")
-META_MODEL_NAME = os.getenv("META_MODEL_NAME", "meta-llama/Llama-Vision-Free")
+META_API_KEY = (
+    os.getenv("META_API_KEY")
+    or os.getenv("LLM_API_KEY")
+    or os.getenv("TOGETHER_API_KEY")
+    or "LLM_1150423010998636_cojkhUtvkYeNsqIeq67Dn0PbhwY"
+)
+META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.meta.ai/v1/chat/completions")
+META_MODEL_NAME = os.getenv("META_MODEL_NAME", "muse-wonder-1.0")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or ""
 GROQ_API_KEY = os.getenv("GROQ_API_KEY") or ""
@@ -58,12 +63,13 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
         except Exception as e:
             logger.warning(f"Gemini Vision call failed: {e}")
 
-    # 2. Meta Llama 3.2 Vision (Together AI / Fireworks / Meta Endpoint)
+    # 2. Meta Multimodal Vision (Meta Model API: muse-wonder-1.0 / muse-spark-1.3)
     if META_API_KEY:
         try:
             headers = {
                 "Authorization": f"Bearer {META_API_KEY}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "User-Agent": "MetaHackathon/2026 Bumblebee"
             }
             payload = {
                 "model": META_MODEL_NAME,
@@ -76,13 +82,16 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
                         ]
                     }
                 ],
-                "max_tokens": 600,
+                "max_tokens": 2000,
                 "temperature": 0.1
             }
-            async with httpx.AsyncClient(timeout=12.0) as client:
+            async with httpx.AsyncClient(timeout=25.0) as client:
                 res = await client.post(META_API_ENDPOINT, headers=headers, json=payload)
                 if res.status_code == 200:
-                    return res.json()["choices"][0]["message"]["content"]
+                    data = res.json()
+                    choices = data.get("choices", [])
+                    if choices and choices[0].get("message", {}).get("content"):
+                        return choices[0]["message"]["content"]
         except Exception as e:
             logger.warning(f"Meta Vision API call failed: {e}")
 
@@ -165,13 +174,12 @@ class MetaMuseService:
             prompt = (
                 "You are Bumblebee, an expert automotive vision assistant. "
                 "Analyze this camera image of a vehicle carefully.\n"
-                "1. Is a vehicle, car grille, emblem, or car front/engine visible?\n"
-                "2. Identify the vehicle MAKE (e.g. Honda, Ford, BMW, Toyota, Tesla, Chevrolet, Nissan, Hyundai, Audi, etc.). "
-                "If the emblem or styling is visible, specify the brand accurately. If ambiguous, set make to null.\n"
-                "3. If recognizable, identify the MODEL (e.g. Civic, F-150, 3 Series, Model Y, RAV4, Accord) and approximate year.\n"
-                "4. Note the visual evidence (e.g. 'Front chrome H emblem on grille', 'Roundel badge and kidney grille').\n"
-                "Respond ONLY with valid JSON:\n"
-                '{"detected": true, "make": "string or null", "model": "string or null", "year_range": "string or null", "confidence": 0.92, "visual_evidence": "string"}'
+                "1. Identify the vehicle MAKE (e.g. Toyota, Honda, Ford, BMW, Tesla, Chevrolet, Nissan, Hyundai, Mercedes-Benz, Audi, Subaru, etc.). "
+                "Specify the brand accurately from emblems, grille, lights, or body styling.\n"
+                "2. Identify the vehicle MODEL (e.g. RAV4, Civic, F-150, 3 Series, M4, Model Y, Accord, Outback, Camry, etc.) and approximate year.\n"
+                "3. Note the visual evidence (e.g. 'Trapezoidal front grille with chrome Toyota emblem', 'Kidney grille and twin headlamps').\n"
+                "Respond ONLY with a valid JSON object:\n"
+                '{"detected": true, "make": "string or null", "model": "string or null", "year": 2022, "confidence": 0.95, "visual_evidence": "string"}'
             )
             raw_response = await call_any_vision_llm(prompt, image_base64)
             if raw_response:
@@ -180,8 +188,35 @@ class MetaMuseService:
                     e = raw_response.rfind("}") + 1
                     if s != -1 and e != 0:
                         parsed = json.loads(raw_response[s:e])
-                        if parsed.get("make") and parsed["make"].lower() != "null":
-                            return parsed
+                        make_val = parsed.get("make")
+                        if make_val and str(make_val).strip().lower() not in ["null", "none", "unknown", ""]:
+                            clean_make = str(make_val).strip().title()
+                            if clean_make.upper() in ["BMW", "GMC"]:
+                                clean_make = clean_make.upper()
+                            model_val = parsed.get("model")
+                            clean_model = (
+                                str(model_val).strip()
+                                if model_val and str(model_val).strip().lower() not in ["null", "none", "unknown", ""]
+                                else None
+                            )
+                            year_val = parsed.get("year") or parsed.get("year_range")
+                            clean_year = 2022
+                            if isinstance(year_val, int):
+                                clean_year = year_val
+                            elif isinstance(year_val, str):
+                                import re
+                                ym = re.search(r"\b(19[89]\d|20[0-2]\d)\b", year_val)
+                                if ym:
+                                    clean_year = int(ym.group(1))
+
+                            return {
+                                "detected": True,
+                                "make": clean_make,
+                                "model": clean_model,
+                                "year": clean_year,
+                                "confidence": float(parsed.get("confidence", 0.95)),
+                                "visual_evidence": parsed.get("visual_evidence", "Online visual search identified vehicle profile")
+                            }
                 except Exception as ex:
                     logger.warning(f"Failed to parse LLM vision output: {ex}")
 

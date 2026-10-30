@@ -10,8 +10,8 @@ services:
       - "8000:8000"
     environment:
       - META_API_KEY=${META_API_KEY:-}
-      - META_API_ENDPOINT=${META_API_ENDPOINT:-https://api.together.xyz/v1/chat/completions}
-      - META_MODEL_NAME=${META_MODEL_NAME:-meta-llama/Llama-Vision-Free}
+      - META_API_ENDPOINT=${META_API_ENDPOINT:-https://api.meta.ai/v1/chat/completions}
+      - META_MODEL_NAME=${META_MODEL_NAME:-muse-wonder-1.0}
     volumes:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

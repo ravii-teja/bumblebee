@@ -17,6 +17,7 @@ interface CameraViewportProps {
   onStartCamera?: () => void;
   useSimulation?: boolean;
   onToggleSimulation?: () => void;
+  isProcessing?: boolean;
 }
 
 export function CameraViewport({
@@ -30,7 +31,8 @@ export function CameraViewport({
   facingMode = "environment",
   onStartCamera,
   useSimulation = false,
-  onToggleSimulation
+  onToggleSimulation,
+  isProcessing = false
 }: CameraViewportProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -145,32 +147,41 @@ export function CameraViewport({
         ctx.fillStyle = "#FACC15";
         ctx.fill();
 
-        // Animated Laser Scanline inside the reticle box
-        scanLineOffsetRef.current = (scanLineOffsetRef.current + 1.8) % boxH;
+        // Animated Laser Scanline inside the reticle box (accelerates during active search)
+        const speed = isProcessing ? 4.5 : 1.8;
+        scanLineOffsetRef.current = (scanLineOffsetRef.current + speed) % boxH;
         const scanY = y1 + scanLineOffsetRef.current;
         const grad = ctx.createLinearGradient(x1, scanY, x2, scanY);
-        grad.addColorStop(0, "rgba(250, 204, 21, 0)");
-        grad.addColorStop(0.5, "rgba(250, 204, 21, 0.75)");
-        grad.addColorStop(1, "rgba(250, 204, 21, 0)");
+        if (isProcessing) {
+          grad.addColorStop(0, "rgba(56, 189, 248, 0)");
+          grad.addColorStop(0.5, "rgba(56, 189, 248, 0.95)");
+          grad.addColorStop(1, "rgba(56, 189, 248, 0)");
+        } else {
+          grad.addColorStop(0, "rgba(250, 204, 21, 0)");
+          grad.addColorStop(0.5, "rgba(250, 204, 21, 0.75)");
+          grad.addColorStop(1, "rgba(250, 204, 21, 0)");
+        }
         ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = isProcessing ? 3 : 2;
         ctx.beginPath();
         ctx.moveTo(x1 + 4, scanY);
         ctx.lineTo(x2 - 4, scanY);
         ctx.stroke();
 
         // Dynamic Tag below reticle
-        const reticleLabel = "⦿ BUMBLEBEE AR SPATIAL PERCEPTION — ALIGN ENGINE / COMPONENT";
+        const reticleLabel = isProcessing
+          ? "⚡ SEARCHING VEHICLE MAKE & MODEL VIA META VISION..."
+          : "⦿ BUMBLEBEE AR SPATIAL PERCEPTION — ALIGN ENGINE / COMPONENT";
         ctx.font = "600 11px 'Inter', sans-serif";
         const tagW = ctx.measureText(reticleLabel).width;
-        ctx.fillStyle = "rgba(7, 9, 13, 0.88)";
-        ctx.strokeStyle = "rgba(250, 204, 21, 0.4)";
+        ctx.fillStyle = "rgba(7, 9, 13, 0.92)";
+        ctx.strokeStyle = isProcessing ? "rgba(56, 189, 248, 0.6)" : "rgba(250, 204, 21, 0.4)";
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.roundRect(cx - tagW / 2 - 12, y2 + 14, tagW + 24, 24, 12);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = "#FACC15";
+        ctx.fillStyle = isProcessing ? "#38BDF8" : "#FACC15";
         ctx.fillText(reticleLabel, cx - tagW / 2, y2 + 30);
       }
 
@@ -261,7 +272,7 @@ export function CameraViewport({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [components, selectedComponent, phase]);
+  }, [components, selectedComponent, phase, isProcessing]);
 
   return (
     <div

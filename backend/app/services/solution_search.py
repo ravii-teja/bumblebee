@@ -11,9 +11,13 @@ from app.models.schemas import RepairProcedure, RepairStep, DiagnosticHypothesis
 
 logger = logging.getLogger(__name__)
 
-META_API_KEY = os.getenv("META_API_KEY") or os.getenv("LLM_API_KEY") or ""
-META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.together.xyz/v1/chat/completions")
-META_MODEL_NAME = os.getenv("META_MODEL_NAME", "meta-llama/Llama-Vision-Free")
+META_API_KEY = (
+    os.getenv("META_API_KEY")
+    or os.getenv("LLM_API_KEY")
+    or "LLM_1150423010998636_cojkhUtvkYeNsqIeq67Dn0PbhwY"
+)
+META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.meta.ai/v1/chat/completions")
+META_MODEL_NAME = os.getenv("META_MODEL_NAME", "muse-wonder-1.0")
 
 
 class SolutionSearchService:
@@ -74,15 +78,16 @@ Provide a verified, non-safety-critical automotive diagnostic and repair guide i
 }}"""
         headers = {
             "Authorization": f"Bearer {META_API_KEY}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "MetaHackathon/2026 Bumblebee"
         }
         payload = {
             "model": META_MODEL_NAME,
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 1200,
+            "max_tokens": 2500,
             "temperature": 0.2
         }
-        async with httpx.AsyncClient(timeout=12.0) as client:
+        async with httpx.AsyncClient(timeout=25.0) as client:
             resp = await client.post(META_API_ENDPOINT, headers=headers, json=payload)
             if resp.status_code == 200:
                 content = resp.json()["choices"][0]["message"]["content"]
