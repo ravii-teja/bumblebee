@@ -209,3 +209,20 @@ Bumblebee incorporates a zero-dependency **SQLite Write-Ahead Logging (WAL)** da
 
 4. **Dual-Angle / Multi-Angle Step Verification (`CameraViewport.tsx`):**
    - Provides dynamic tilt guidance (`[ ⤹ MULTI-ANGLE VERIFICATION: TILT 30° TOWARD REAR HINGES ]`) during critical sealing steps (e.g. airbox upper lid engagement) to prevent unmetered air leaks and false positives.
+
+---
+
+## 9. Deployment Architecture & Zero-Delay Web Client Initialization
+
+1. **Polyglot Vercel Services (`vercel.json`):**
+   - Configured with `services.backend` (FastAPI with `uvicorn`) and `services.frontend` (Next.js 16 with Turbopack).
+   - Ingress rewrites direct `/api/(.*)`, `/health`, and `/docs` to the FastAPI backend, and `/(.*)` to the Next.js frontend.
+   - Frontend binds privately to backend via `BACKEND_URL`.
+
+2. **Next.js Dev Proxy Rewrites (`next.config.ts`):**
+   - Implemented dev proxy rewrites for `/api/:path*` pointing to `http://localhost:8000/api/:path*` (or `process.env.BACKEND_URL`).
+   - Ensures local development on any port, hostname, or mobile LAN address connects seamlessly without CORS issues or 404s.
+
+3. **Zero-Delay Rendering & Grounded Fallback State:**
+   - Pre-seeds client state with `FALLBACK_SESSION` and `FALLBACK_STEPS` so the camera viewport, reticle, audio controls, and HUD mount on frame 0.
+   - Eliminates the previous blank loading screen (`Initializing Camera View...`), backgrounding session synchronization while allowing immediate interactive field usage.

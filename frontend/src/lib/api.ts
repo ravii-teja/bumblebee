@@ -1,5 +1,6 @@
 import {
   RepairSession,
+  RepairStep,
   ComponentObservation,
   VerificationResult,
   PartCandidate
@@ -14,18 +15,124 @@ export function getApiBase(): string {
   if (typeof window === "undefined" && process.env.BACKEND_URL) {
     return `${process.env.BACKEND_URL.replace(/\/+$/, "")}/api/v1`;
   }
-  // 3. Client-side in browser: relative path when deployed on same domain on Vercel
+  // 3. Client-side in browser
   if (typeof window !== "undefined") {
-    if (window.location.hostname === "localhost" && window.location.port === "3000") {
-      return "http://localhost:8000/api/v1";
+    const host = window.location.hostname;
+    const isLocal =
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "0.0.0.0" ||
+      host.startsWith("192.168.") ||
+      host.startsWith("10.") ||
+      host.endsWith(".local");
+    if (isLocal) {
+      return `http://${host}:8000/api/v1`;
     }
     return "/api/v1";
   }
   return "http://localhost:8000/api/v1";
 }
 
+export const FALLBACK_STEPS: RepairStep[] = [
+  {
+    step_number: 1,
+    title: "Locate Air Cleaner Housing",
+    instruction: "Locate the engine air cleaner filter housing on the driver side of the engine compartment.",
+    required_tools: ["None"],
+    safety_warning: "Ensure ignition is OFF and engine has cooled.",
+    expected_visual_state: "Air cleaner housing in full camera frame, dual metal spring clips clearly visible on the right edge.",
+    reference_manual_page: 482,
+    reference_diagram_url: "/vehicles/rav4/step1_locate.svg",
+    verification_criteria: [
+      "Air cleaner housing centered in frame",
+      "Retaining clips visible",
+      "Lighting adequate for inspection"
+    ],
+    sample_frame_key: "step1_housing_overview"
+  },
+  {
+    step_number: 2,
+    title: "Release Retaining Spring Clips",
+    instruction: "Unclip the two quick-release metal spring clamps securing the upper air cleaner housing.",
+    required_tools: ["Hands only"],
+    safety_warning: "Do not use screwdrivers or sharp pry tools; the spring clips are designed for thumb release.",
+    expected_visual_state: "Both metal spring clips unfastened, hanging downward; upper housing seam loose.",
+    reference_manual_page: 482,
+    reference_diagram_url: "/vehicles/rav4/step2_unclip.svg",
+    verification_criteria: [
+      "Upper spring clip disengaged",
+      "Lower spring clip disengaged",
+      "No clip obstructing the seam"
+    ],
+    sample_frame_key: "step2_clips_released"
+  },
+  {
+    step_number: 3,
+    title: "Lift Upper Housing Lid",
+    instruction: "Lift the right edge of the upper air cleaner housing upward to expose the filter element inside.",
+    required_tools: ["Hands only"],
+    safety_warning: "Do not forcefully yank the lid upward; avoid straining the mass airflow sensor wiring harness.",
+    expected_visual_state: "Housing lid propped open, filter media and rubber perimeter gasket clearly visible.",
+    reference_manual_page: 483,
+    reference_diagram_url: "/vehicles/rav4/step3_lift.svg",
+    verification_criteria: [
+      "Gap between upper lid and lower box greater than 2 inches",
+      "Filter element exposed",
+      "Hinge tabs intact"
+    ],
+    sample_frame_key: "step3_lid_lifted"
+  },
+  {
+    step_number: 4,
+    title: "Extract Old Filter Element",
+    instruction: "Carefully pull the rectangular filter element out from the lower housing. Inspect pleats for embedded debris.",
+    required_tools: ["Hands only"],
+    safety_warning: "Prevent dirt or foreign debris from falling into the clean intake tract leading to the throttle body.",
+    expected_visual_state: "Filter element removed from tray; lower housing tray empty.",
+    reference_manual_page: 483,
+    reference_diagram_url: "/vehicles/rav4/step4_extract.svg",
+    verification_criteria: [
+      "Filter element removed from tray",
+      "Lower cavity clean and ready for new filter"
+    ],
+    sample_frame_key: "step4_filter_removed"
+  },
+  {
+    step_number: 5,
+    title: "Insert Replacement Filter Element",
+    instruction: "Seat the replacement air filter into the lower housing, verifying the angled corner keyway aligns perfectly.",
+    required_tools: ["Hands only"],
+    safety_warning: "Ensure perimeter rubber gasket is completely seated with no gaps.",
+    expected_visual_state: "New clean white filter seated flat in lower housing, rubber gasket flush.",
+    reference_manual_page: 484,
+    reference_diagram_url: "/vehicles/rav4/step5_insert.svg",
+    verification_criteria: [
+      "New filter seated flat in lower housing",
+      "Perimeter seal engaged evenly",
+      "Airflow orientation arrow pointing correct direction"
+    ],
+    sample_frame_key: "step5_filter_seated"
+  },
+  {
+    step_number: 6,
+    title: "Close Upper Housing & Lock Retaining Clips",
+    instruction: "Align the rear hinge tabs, lower the upper housing cover, and snap both metal spring clips firmly shut.",
+    required_tools: ["Hands only"],
+    safety_warning: "Ensure the rear hinge tabs are engaged before snapping the front clips.",
+    expected_visual_state: "Housing seam tight and completely closed with no gap; both metal spring clips snapped over the upper bead.",
+    reference_manual_page: 484,
+    reference_diagram_url: "/vehicles/rav4/step6_close.svg",
+    verification_criteria: [
+      "Upper and lower housing flush",
+      "Both retaining clips securely latched",
+      "Intake duct clamps secure"
+    ],
+    sample_frame_key: "step6_housing_sealed"
+  }
+];
+
 // Grounded fallback dataset for offline/mock presentation
-const FALLBACK_SESSION: RepairSession = {
+export const FALLBACK_SESSION: RepairSession = {
   session_id: "sess_bumblebee_field",
   vehicle_profile: {
     id: "generic_vehicle",
@@ -50,7 +157,7 @@ const FALLBACK_SESSION: RepairSession = {
     safety_critical: false,
     source_manual: "Official Manufacturer Service Documentation",
     source_section: "Field Inspection Protocol",
-    steps: []
+    steps: FALLBACK_STEPS
   },
   current_step_number: 1,
   completed_steps: [],

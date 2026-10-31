@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { RepairSession, ComponentObservation, VerificationResult, DialoguePhase } from "@/lib/types";
-import { createSession, fetchComponents, verifyStepState, streamConversationTurn } from "@/lib/api";
+import { createSession, fetchComponents, verifyStepState, streamConversationTurn, FALLBACK_SESSION, FALLBACK_STEPS } from "@/lib/api";
 import { useCamera } from "@/hooks/useCamera";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useObdScanner } from "@/hooks/useObdScanner";
@@ -18,7 +18,7 @@ import { BumblebeeBrandBadge } from "@/components/hud/BumblebeeBrandBadge";
 import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera, Activity } from "lucide-react";
 
 export default function BumblebeeChamber() {
-  const [session, setSession] = useState<RepairSession | null>(null);
+  const [session, setSession] = useState<RepairSession>(FALLBACK_SESSION);
   const [components, setComponents] = useState<ComponentObservation[]>([]);
   const [selectedComponent, setSelectedComponent] = useState<ComponentObservation | null>(null);
   const [activeModal, setActiveModal] = useState<"none" | "parts" | "manual" | "summary">("none");
@@ -185,11 +185,21 @@ export default function BumblebeeChamber() {
 
   // Initialize Session quietly without injecting hardcoded dialogue
   useEffect(() => {
+    let isMounted = true;
     async function init() {
-      const sess = await createSession("generic_vehicle", "general_inspection");
-      setSession(sess);
+      try {
+        const sess = await createSession("generic_vehicle", "general_inspection");
+        if (isMounted && sess) {
+          setSession(sess);
+        }
+      } catch (err) {
+        console.warn("Using offline fallback session:", err);
+      }
     }
     init();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Camera Shutter Click
@@ -249,30 +259,11 @@ export default function BumblebeeChamber() {
     }
   };
 
-  if (!session) {
-    return (
-      <div
-        style={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#07090D",
-          color: "var(--text-secondary)"
-        }}
-      >
-        <div style={{ fontSize: "14px", color: "var(--text-muted)" }}>
-          Initializing Camera View...
-        </div>
-      </div>
-    );
-  }
-
   const currentStep =
-    session.procedure.steps.find((s) => s.step_number === session.current_step_number) ||
-    session.procedure.steps[0];
-  const stepVerification = session.verifications[currentStep.step_number];
+    session.procedure.steps?.find((s) => s.step_number === session.current_step_number) ||
+    session.procedure.steps?.[0] ||
+    FALLBACK_STEPS[0];
+  const stepVerification = currentStep ? session.verifications[currentStep.step_number] : undefined;
 
   return (
     <main
