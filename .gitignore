@@ -50,6 +50,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Database files
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
 # Environment variables (keep .env.example)
 .env
 .env.local

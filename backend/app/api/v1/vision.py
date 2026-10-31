@@ -12,6 +12,7 @@ from app.services.meta_muse import MetaMuseService
 from app.services.sam_segmentation import SAMSegmentationService
 from app.core.state_machine import RepairStateMachine
 from app.core.safety_guard import SafetyGuard
+from app.db.repository import SessionRepository
 
 router = APIRouter(prefix="/vision", tags=["Vision & Perception"])
 meta_muse = MetaMuseService()
@@ -38,6 +39,17 @@ async def identify_components(req: VisionIdentifyRequest):
             comp.polygon_points = poly
 
     session.observations = components
+    try:
+        if req.image_base64:
+            SessionRepository.record_image(
+                session_id=req.session_id,
+                step_number=session.current_step_number,
+                image_type="IDENTIFY",
+                image_data=req.image_base64,
+                visual_evidence=f"Spatial detection observed {len(components)} engine components"
+            )
+    except Exception:
+        pass
     return components
 
 
@@ -70,6 +82,19 @@ async def verify_step(req: VerifyStepRequest):
         session_id=req.session_id,
         verification=verification
     )
+
+    try:
+        if req.image_base64:
+            SessionRepository.record_image(
+                session_id=req.session_id,
+                step_number=req.step_number,
+                image_type="VERIFY",
+                image_data=req.image_base64,
+                visual_evidence=verification.visual_evidence_description,
+                confidence=verification.confidence
+            )
+    except Exception:
+        pass
 
     return {
         "success": success,

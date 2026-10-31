@@ -4,8 +4,9 @@ from datetime import datetime
 from typing import Dict, Optional, Tuple
 from app.models.schemas import RepairSession, VerificationResult, AuditEvent, DialogueState
 from app.mock_data.rav4_data import RAV4_PROFILE, AIR_FILTER_PROCEDURE, GENERIC_PROFILE, GENERIC_PROCEDURE
+from app.db.repository import SessionRepository
 
-# In-memory session store (can be backed by SQLite/PostgreSQL)
+# In-memory fast cache session store (backed by SQLite WAL database)
 _SESSION_STORE: Dict[str, RepairSession] = {}
 
 
@@ -50,6 +51,10 @@ class RepairStateMachine:
             ]
         )
         _SESSION_STORE[session_id] = session
+        try:
+            SessionRepository.upsert_session(session)
+        except Exception as e:
+            pass
         return session
 
     @classmethod
@@ -109,6 +114,28 @@ class RepairStateMachine:
                 details={"verified_confidence": verification.confidence}
             )
         )
+
+        # Database transactional persistence
+        try:
+            SessionRepository.upsert_session(session)
+            step_obj = next((s for s in session.procedure.steps if s.step_number == verification.step_number), None)
+            step_title = step_obj.title if step_obj else f"Step {verification.step_number}"
+            step_inst = step_obj.instruction if step_obj else ""
+            SessionRepository.record_step_verification(
+                session_id=session_id,
+                step_number=verification.step_number,
+                title=step_title,
+                instruction=step_inst,
+                verification=verification
+            )
+            if session.status == "COMPLETED":
+                SessionRepository.record_or_update_issue_resolution(
+                    session_id=session_id,
+                    resolution_status="RESOLVED"
+                )
+        except Exception:
+            pass
+
         return True, None, session
 
     @classmethod
@@ -128,4 +155,8 @@ class RepairStateMachine:
                     details={}
                 )
             )
+            try:
+                SessionRepository.upsert_session(session)
+            except Exception:
+                pass
         return session

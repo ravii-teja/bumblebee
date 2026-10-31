@@ -457,3 +457,47 @@ export async function sendConversationTurn(
     session: FALLBACK_SESSION
   };
 }
+
+export async function fetchSessionDossier(sessionId: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`${getApiBase()}/analytics/sessions/${sessionId}`);
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Error fetching session dossier:", err);
+  }
+  return null;
+}
+
+export async function fetchAnalyticsStats(): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`${getApiBase()}/analytics/stats`);
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.warn("Error fetching analytics stats:", err);
+  }
+  return null;
+}
+
+export async function submitTechnicianFeedback(
+  sessionId: string,
+  rating: number,
+  feedback?: string,
+  partsReplaced?: string[]
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${getApiBase()}/analytics/sessions/${sessionId}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rating,
+        feedback,
+        resolution_status: "RESOLVED",
+        parts_replaced: partsReplaced
+      })
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("Error submitting technician feedback:", err);
+    return false;
+  }
+}

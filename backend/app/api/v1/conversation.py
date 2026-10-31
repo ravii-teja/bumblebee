@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.schemas import ConversationalInputRequest, DialogueMessage, utc_now
 from app.core.state_machine import RepairStateMachine
 from app.services.conversational_agent import ConversationalAgentService
+from app.db.repository import SessionRepository
 
 router = APIRouter(prefix="/conversation", tags=["Conversation"])
 
@@ -42,6 +43,39 @@ async def conversation_turn(req: ConversationalInputRequest):
     session.dialogue.messages.append(ai_msg)
     session.dialogue.phase = next_phase
     session.updated_at = utc_now()
+
+    # Database transactional persistence
+    try:
+        if req.image_base64:
+            SessionRepository.record_image(
+                session_id=req.session_id,
+                step_number=session.current_step_number,
+                image_type="SCAN",
+                image_data=req.image_base64,
+                visual_evidence=payload.get("detection_meta", {}).get("visual_evidence") if isinstance(payload, dict) else None,
+                detected_make=session.dialogue.detected_make,
+                detected_model=session.dialogue.model
+            )
+        SessionRepository.record_turn(
+            session_id=req.session_id,
+            sender="AI",
+            phase=next_phase,
+            user_text=req.user_speech_or_text,
+            ai_text=ai_text,
+            speech_text=speech_text,
+            payload=payload if isinstance(payload, dict) else None
+        )
+        SessionRepository.upsert_session(session)
+        SessionRepository.record_or_update_issue_resolution(
+            session_id=req.session_id,
+            make=session.dialogue.confirmed_make or session.dialogue.detected_make or session.vehicle_profile.make,
+            model=session.dialogue.model or session.vehicle_profile.model,
+            year=session.dialogue.year or session.vehicle_profile.year,
+            reported_issue=session.dialogue.reported_issue,
+            hypothesis=session.dialogue.hypothesis
+        )
+    except Exception:
+        pass
 
     return {
         "text": ai_text,
@@ -98,6 +132,39 @@ async def conversation_stream(req: ConversationalInputRequest):
         session.dialogue.messages.append(ai_msg)
         session.dialogue.phase = next_phase
         session.updated_at = utc_now()
+
+        # Database transactional persistence
+        try:
+            if req.image_base64:
+                SessionRepository.record_image(
+                    session_id=req.session_id,
+                    step_number=session.current_step_number,
+                    image_type="SCAN",
+                    image_data=req.image_base64,
+                    visual_evidence=payload.get("detection_meta", {}).get("visual_evidence") if isinstance(payload, dict) else None,
+                    detected_make=session.dialogue.detected_make,
+                    detected_model=session.dialogue.model
+                )
+            SessionRepository.record_turn(
+                session_id=req.session_id,
+                sender="AI",
+                phase=next_phase,
+                user_text=req.user_speech_or_text,
+                ai_text=ai_text,
+                speech_text=speech_text,
+                payload=payload if isinstance(payload, dict) else None
+            )
+            SessionRepository.upsert_session(session)
+            SessionRepository.record_or_update_issue_resolution(
+                session_id=req.session_id,
+                make=session.dialogue.confirmed_make or session.dialogue.detected_make or session.vehicle_profile.make,
+                model=session.dialogue.model or session.vehicle_profile.model,
+                year=session.dialogue.year or session.vehicle_profile.year,
+                reported_issue=session.dialogue.reported_issue,
+                hypothesis=session.dialogue.hypothesis
+            )
+        except Exception:
+            pass
 
         # 5. Emit full state packet with JSON serialization
         full_packet = json.dumps({

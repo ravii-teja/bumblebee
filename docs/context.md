@@ -163,9 +163,30 @@ The frontend communicates with the FastAPI backend over HTTP REST with JSON payl
 ## 6. Verification & Test Coverage
 
 - **Backend Test Suite (`backend/tests/test_api.py`):**
-  - `test_health_check`: Verified API health and model availability.
+  - `test_health_check`: Verified API health, database status, and model availability.
   - `test_session_lifecycle_and_verification`: Verified session initialization, component identification, and step completion.
   - `test_safety_guard`: Verified high-voltage and hazardous component safety intercepts.
   - `test_multimodal_conversation_and_solution_search`: Verified unbiased camera scan, dynamic make confirmation, issue ingestion, and step progression.
+  - `test_conversation_sse_stream`: Verified SSE real-time streaming turn with immediate audio emission.
+  - `test_dtc_hybrid_manual_retriever`: Verified Diagnostic Trouble Code matching and torque specs.
+  - `test_database_persistence_and_analytics`: Verified SQLite WAL database persistence, session dossiers, captured frame history, and technician feedback loop.
 - **Dynamic Multi-Make Simulation:** Verified automated flows for Ford F-150, BMW 330i, and Honda Civic.
 - **Frontend Build & Linter:** `npm run lint` and `npm run build` pass with **0 errors**.
+
+---
+
+## 7. Persistent Database & Continuous Improvement (`app/db`)
+
+Bumblebee incorporates a zero-dependency **SQLite Write-Ahead Logging (WAL)** database layer that automatically records every diagnostic and repair interaction:
+
+1. **`sessions`:** Tracks session ID, vehicle make/model/year, status, current step, reported issue, hypotheses, and resolution summary.
+2. **`vehicles`:** Catalogues vehicle specifications, engine profiles, and manual references.
+3. **`session_images`:** Archives every camera frame captured during vehicle scan, component identification, and step visual verification with timestamps, detection confidence, and visual evidence descriptions.
+4. **`conversation_turns`:** Records sequential turn transcripts (user speech/text, AI text, TTS speech scripts, phase, and JSON payload metadata).
+5. **`step_records`:** Stores execution results for each procedural step (`PENDING`, `VERIFIED`, `FAILED`) with visual criteria match data.
+6. **`issue_resolutions`:** Tracks resolved issues, DTC trouble codes, root causes, replaced part numbers, and technician feedback ratings (1–5 stars) to continually refine and train the vision and reasoning models.
+7. **Analytics API Endpoints (`/api/v1/analytics/...`):**
+   - `GET /sessions`: Paginated session history.
+   - `GET /sessions/{session_id}`: Full session dossier bundle for audits.
+   - `GET /stats`: Aggregate platform metrics (total sessions, completion rate, common vehicles, step success rate, average technician rating).
+   - `POST /sessions/{session_id}/feedback`: Records diagnostic accuracy feedback and parts installed.

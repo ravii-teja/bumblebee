@@ -138,3 +138,58 @@ def test_dtc_hybrid_manual_retriever():
     assert "Torque Fasteners" in citations[-1]["section"]
 
 
+def test_database_persistence_and_analytics():
+    """Tests SQLite database persistence for sessions, vehicles, images, issues, and technician feedback."""
+    # 1. Create a session
+    sess_res = client.post("/api/v1/sessions", json={"vehicle_id": "generic_vehicle", "procedure_id": "general_inspection"})
+    assert sess_res.status_code == 200
+    session_id = sess_res.json()["session_id"]
+
+    # 2. Perform a turn with vehicle make and simulated image
+    turn_res = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "2022 Subaru Outback with rough idle",
+        "image_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    })
+    assert turn_res.status_code == 200
+
+    # 3. Query historical session list
+    list_res = client.get("/api/v1/analytics/sessions?limit=10")
+    assert list_res.status_code == 200
+    sessions_list = list_res.json()
+    assert len(sessions_list) >= 1
+    found = next((s for s in sessions_list if s["session_id"] == session_id), None)
+    assert found is not None
+    assert found["turn_count"] >= 1
+    assert found["image_count"] >= 1
+
+    # 4. Query full session dossier
+    dossier_res = client.get(f"/api/v1/analytics/sessions/{session_id}")
+    assert dossier_res.status_code == 200
+    dossier = dossier_res.json()
+    assert dossier["session"]["session_id"] == session_id
+    assert len(dossier["turns"]) >= 1
+    assert len(dossier["images"]) >= 1
+    assert "Subaru" in dossier["session"]["make"] or "Subaru" in dossier["turns"][0]["user_text"]
+
+    # 5. Submit technician feedback for continuous improvement
+    feedback_res = client.post(f"/api/v1/analytics/sessions/{session_id}/feedback", json={
+        "rating": 5,
+        "feedback": "Subaru diagnostic correctly identified air intake and MAF circuit.",
+        "resolution_status": "RESOLVED",
+        "parts_replaced": ["16546-AA12A"]
+    })
+    assert feedback_res.status_code == 200
+    assert feedback_res.json()["status"] == "success"
+
+    # 6. Verify analytics stats summary
+    stats_res = client.get("/api/v1/analytics/stats")
+    assert stats_res.status_code == 200
+    stats = stats_res.json()
+    assert stats["total_sessions"] >= 1
+    assert stats["total_conversation_turns"] >= 1
+    assert stats["total_images_captured"] >= 1
+    assert stats["average_technician_rating"] >= 4.0
+
+
+
