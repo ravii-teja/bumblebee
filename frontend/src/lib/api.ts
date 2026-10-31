@@ -341,6 +341,87 @@ export async function fetchParts(
   return FALLBACK_PARTS;
 }
 
+export async function streamConversationTurn(
+  sessionId: string,
+  userSpeechOrText: string,
+  imageBase64?: string,
+  onSpeech?: (speechText: string, phase: string) => void
+): Promise<{
+  text: string;
+  speech_text: string;
+  phase: string;
+  payload: Record<string, unknown>;
+  session: RepairSession;
+}> {
+  try {
+    const res = await fetch(`${getApiBase()}/conversation/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        session_id: sessionId,
+        user_speech_or_text: userSpeechOrText,
+        image_base64: imageBase64
+      })
+    });
+
+    if (res.ok && res.body) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalData: {
+        text: string;
+        speech_text: string;
+        phase: string;
+        payload: Record<string, unknown>;
+        session: RepairSession;
+      } | null = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const block of lines) {
+          if (!block.trim()) continue;
+          const eventMatch = block.match(/event:\s*([a-zA-Z0-9_]+)/);
+          const dataMatch = block.match(/data:\s*([\s\S]+)/);
+          const eventName = eventMatch ? eventMatch[1] : "message";
+          const dataStr = dataMatch ? dataMatch[1].trim() : "";
+
+          if (eventName === "speech" && onSpeech) {
+            try {
+              const speechData = JSON.parse(dataStr);
+              if (speechData.speech_text) {
+                onSpeech(speechData.speech_text, speechData.phase);
+              }
+            } catch (e) {
+              console.warn("Error parsing speech stream chunk:", e);
+            }
+          } else if (eventName === "state") {
+            try {
+              finalData = JSON.parse(dataStr);
+            } catch (e) {
+              console.warn("Error parsing state stream chunk:", e);
+            }
+          }
+        }
+      }
+
+      if (finalData) {
+        return finalData;
+      }
+    }
+  } catch (err) {
+    console.warn("SSE stream failed, falling back to standard turn:", err);
+  }
+
+  // Fallback to standard synchronous turn endpoint
+  return sendConversationTurn(sessionId, userSpeechOrText, imageBase64);
+}
+
 export async function sendConversationTurn(
   sessionId: string,
   userSpeechOrText: string,

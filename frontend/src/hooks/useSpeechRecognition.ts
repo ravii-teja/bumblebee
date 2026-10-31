@@ -95,6 +95,11 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
     recog.lang = "en-US";
 
     recog.onresult = (event: SpeechRecognitionEventLike) => {
+      // Audio Ducking: Ignore sound while Assistant is speaking TTS
+      if (isPausedRef.current || (typeof window !== "undefined" && window.speechSynthesis?.speaking)) {
+        return;
+      }
+
       let fullTranscript = "";
       let hasFinal = false;
 

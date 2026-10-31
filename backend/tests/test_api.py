@@ -107,3 +107,34 @@ def test_multimodal_conversation_and_solution_search():
     assert data4["phase"] == "ACTIVE_REPAIR"
     assert "Step 2" in data4["text"]
 
+
+def test_conversation_sse_stream():
+    """Tests Server-Sent Events (SSE) streaming turn endpoint for instant TTS speech emission."""
+    res = client.post("/api/v1/sessions", json={"vehicle_id": "generic_vehicle", "procedure_id": "general_inspection"})
+    assert res.status_code == 200
+    session_id = res.json()["session_id"]
+
+    stream_res = client.post(
+        "/api/v1/conversation/stream",
+        json={"session_id": session_id, "user_speech_or_text": "2023 Ford F-150"}
+    )
+    assert stream_res.status_code == 200
+    assert "text/event-stream" in stream_res.headers["content-type"]
+    body = stream_res.text
+    assert "event: speech" in body
+    assert "event: state" in body
+    assert "Ford F-150" in body
+
+
+def test_dtc_hybrid_manual_retriever():
+    """Tests DTC code matching and torque fastener specifications in OEM manual retriever."""
+    from app.services.manual_retriever import ManualRetrieverService
+    service = ManualRetrieverService()
+    citations = service.search_manual("generic_vehicle", "Vehicle throwing P0171 bank 1 lean code")
+    assert len(citations) >= 2
+    dtc_cite = next((c for c in citations if "P0171" in c["section"]), None)
+    assert dtc_cite is not None
+    assert "System Too Lean" in dtc_cite["section"]
+    assert "Torque Fasteners" in citations[-1]["section"]
+
+

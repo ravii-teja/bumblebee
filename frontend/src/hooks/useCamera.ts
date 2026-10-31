@@ -94,6 +94,66 @@ export function useCamera() {
     return canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
   }, []);
 
+  const [isCameraSteady, setIsCameraSteady] = useState<boolean>(false);
+  const motionCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const prevFrameDataRef = useRef<Uint8ClampedArray | null>(null);
+  const steadyTicksRef = useRef<number>(0);
+
+  // Client-side motion-stability filter: detects when camera is held steady for >= 600ms
+  useEffect(() => {
+    if (!isStreaming) {
+      queueMicrotask(() => setIsCameraSteady(false));
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const video = videoRef.current;
+      if (!video || video.readyState < 2 || video.videoWidth === 0) return;
+
+      if (!motionCanvasRef.current && typeof document !== "undefined") {
+        const c = document.createElement("canvas");
+        c.width = 64;
+        c.height = 48;
+        motionCanvasRef.current = c;
+      }
+
+      const canvas = motionCanvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0, 64, 48);
+      const imgData = ctx.getImageData(0, 0, 64, 48).data;
+
+      if (prevFrameDataRef.current && prevFrameDataRef.current.length === imgData.length) {
+        let diffSum = 0;
+        const sampledPoints = (64 * 48) / 4;
+        for (let i = 0; i < imgData.length; i += 16) {
+          diffSum += Math.abs(imgData[i] - prevFrameDataRef.current[i]);
+        }
+        const avgDelta = diffSum / sampledPoints;
+
+        if (avgDelta < 12.0) {
+          steadyTicksRef.current += 1;
+          if (steadyTicksRef.current >= 4) {
+            setIsCameraSteady(true);
+          }
+        } else {
+          steadyTicksRef.current = 0;
+          setIsCameraSteady(false);
+        }
+      }
+
+      prevFrameDataRef.current = new Uint8ClampedArray(imgData);
+    }, 150);
+
+    return () => {
+      clearInterval(interval);
+      prevFrameDataRef.current = null;
+      steadyTicksRef.current = 0;
+    };
+  }, [isStreaming]);
+
   const toggleFacingMode = useCallback(() => {
     setFacingMode((m) => (m === "environment" ? "user" : "environment"));
   }, []);
@@ -123,6 +183,7 @@ export function useCamera() {
     stopCamera,
     captureFrame,
     facingMode,
-    toggleFacingMode
+    toggleFacingMode,
+    isCameraSteady
   };
 }

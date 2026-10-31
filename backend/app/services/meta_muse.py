@@ -27,8 +27,9 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 
 async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
-    """Sends camera frame to available multimodal vision LLM (Gemini, Meta/Together, OpenAI, Groq, Ollama)."""
-    # 1. Google Gemini Multimodal Vision
+    """Sends camera frame to available multimodal vision LLM (Gemini, Meta/Together, OpenAI, Groq, Ollama)
+    with strict JSON Structured Output mode enabled."""
+    # 1. Google Gemini Multimodal Vision (Structured JSON Output)
     if GEMINI_API_KEY:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
@@ -48,7 +49,8 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
                 ],
                 "generationConfig": {
                     "temperature": 0.1,
-                    "maxOutputTokens": 600
+                    "maxOutputTokens": 800,
+                    "response_mime_type": "application/json"
                 }
             }
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -63,7 +65,7 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
         except Exception as e:
             logger.warning(f"Gemini Vision call failed: {e}")
 
-    # 2. Meta Multimodal Vision (Meta Model API: muse-wonder-1.0 / muse-spark-1.3)
+    # 2. Meta Multimodal Vision (Meta Model API: muse-wonder-1.0 / muse-spark-1.3 with JSON object mode)
     if META_API_KEY:
         try:
             headers = {
@@ -82,6 +84,7 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
                         ]
                     }
                 ],
+                "response_format": {"type": "json_object"},
                 "max_tokens": 2000,
                 "temperature": 0.1
             }
@@ -95,7 +98,7 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
         except Exception as e:
             logger.warning(f"Meta Vision API call failed: {e}")
 
-    # 3. OpenAI GPT-4o Vision
+    # 3. OpenAI GPT-4o Vision (Structured JSON Object Mode)
     if OPENAI_API_KEY:
         try:
             headers = {
@@ -113,7 +116,8 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
                         ]
                     }
                 ],
-                "max_tokens": 500,
+                "response_format": {"type": "json_object"},
+                "max_tokens": 600,
                 "temperature": 0.1
             }
             async with httpx.AsyncClient(timeout=12.0) as client:
@@ -123,7 +127,7 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
         except Exception as e:
             logger.warning(f"OpenAI Vision call failed: {e}")
 
-    # 4. Groq Vision
+    # 4. Groq Vision (Structured JSON Object Mode)
     if GROQ_API_KEY:
         try:
             headers = {
@@ -141,7 +145,8 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
                         ]
                     }
                 ],
-                "max_tokens": 500
+                "response_format": {"type": "json_object"},
+                "max_tokens": 600
             }
             async with httpx.AsyncClient(timeout=10.0) as client:
                 res = await client.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
@@ -149,6 +154,25 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
                     return res.json()["choices"][0]["message"]["content"]
         except Exception as e:
             logger.warning(f"Groq Vision call failed: {e}")
+
+    # 5. Local Ollama Vision (llama3.2-vision)
+    if OLLAMA_BASE_URL:
+        try:
+            payload = {
+                "model": "llama3.2-vision",
+                "prompt": prompt,
+                "images": [image_base64],
+                "format": "json",
+                "stream": False
+            }
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                res = await client.post(f"{OLLAMA_BASE_URL}/api/generate", json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    if data.get("response"):
+                        return data["response"]
+        except Exception as e:
+            logger.debug(f"Local Ollama vision not reachable: {e}")
 
     return None
 

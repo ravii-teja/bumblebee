@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { RepairSession, ComponentObservation, VerificationResult, DialoguePhase } from "@/lib/types";
-import { createSession, fetchComponents, verifyStepState, sendConversationTurn } from "@/lib/api";
+import { createSession, fetchComponents, verifyStepState, streamConversationTurn } from "@/lib/api";
 import { useCamera } from "@/hooks/useCamera";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { CameraViewport } from "@/components/camera/CameraViewport";
@@ -39,7 +39,8 @@ export default function BumblebeeChamber() {
     facingMode,
     toggleFacingMode,
     startCamera,
-    captureFrame
+    captureFrame,
+    isCameraSteady
   } = useCamera();
 
   // Forward declarations for interactive voice loop
@@ -114,13 +115,28 @@ export default function BumblebeeChamber() {
 
       try {
         const imgFrame = customImageBase64 || captureFrame() || undefined;
-        const res = await sendConversationTurn(session.session_id, userInput, imgFrame);
+        let speechPlayed = false;
+
+        const res = await streamConversationTurn(
+          session.session_id,
+          userInput,
+          imgFrame,
+          (speechText, nextPhase) => {
+            // Immediate low-latency TTS playback
+            if (speechText && !speechPlayed) {
+              speechPlayed = true;
+              speakText(speechText);
+              setPhase(nextPhase as DialoguePhase);
+            }
+          }
+        );
 
         setAiMessage(res.text);
         setPhase(res.phase as DialoguePhase);
         setSession(res.session);
 
-        if (res.speech_text) {
+        // Fallback speech playback if not triggered during stream
+        if (res.speech_text && !speechPlayed) {
           speakText(res.speech_text);
         }
 
@@ -272,6 +288,7 @@ export default function BumblebeeChamber() {
         onStartCamera={startCamera}
         useSimulation={useSimulation}
         onToggleSimulation={() => setUseSimulation((s) => !s)}
+        isCameraSteady={isCameraSteady}
         isProcessing={isProcessing}
       />
 

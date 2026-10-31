@@ -18,6 +18,7 @@ interface CameraViewportProps {
   useSimulation?: boolean;
   onToggleSimulation?: () => void;
   isProcessing?: boolean;
+  isCameraSteady?: boolean;
 }
 
 export function CameraViewport({
@@ -32,7 +33,8 @@ export function CameraViewport({
   onStartCamera,
   useSimulation = false,
   onToggleSimulation,
-  isProcessing = false
+  isProcessing = false,
+  isCameraSteady = false
 }: CameraViewportProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -98,8 +100,9 @@ export function CameraViewport({
         ctx.strokeRect(x1, y1, boxW, boxH);
         ctx.setLineDash([]);
 
-        // Vibrant Corner Brackets in Bumblebee Yellow
-        ctx.strokeStyle = "#FACC15";
+        // Vibrant Corner Brackets (Turns emerald green when frame is steady & locked)
+        const primaryColor = isProcessing ? "#38BDF8" : isCameraSteady ? "#22C55E" : "#FACC15";
+        ctx.strokeStyle = primaryColor;
         ctx.lineWidth = 3.5;
         ctx.lineCap = "round";
 
@@ -132,7 +135,7 @@ export function CameraViewport({
         ctx.stroke();
 
         // Center Crosshair
-        ctx.strokeStyle = "rgba(250, 204, 21, 0.8)";
+        ctx.strokeStyle = isCameraSteady ? "rgba(34, 197, 94, 0.9)" : "rgba(250, 204, 21, 0.8)";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(cx - 16, cy);
@@ -144,11 +147,11 @@ export function CameraViewport({
         // Center target circle
         ctx.beginPath();
         ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-        ctx.fillStyle = "#FACC15";
+        ctx.fillStyle = primaryColor;
         ctx.fill();
 
         // Animated Laser Scanline inside the reticle box (accelerates during active search)
-        const speed = isProcessing ? 4.5 : 1.8;
+        const speed = isProcessing ? 4.5 : isCameraSteady ? 1.0 : 1.8;
         scanLineOffsetRef.current = (scanLineOffsetRef.current + speed) % boxH;
         const scanY = y1 + scanLineOffsetRef.current;
         const grad = ctx.createLinearGradient(x1, scanY, x2, scanY);
@@ -156,6 +159,10 @@ export function CameraViewport({
           grad.addColorStop(0, "rgba(56, 189, 248, 0)");
           grad.addColorStop(0.5, "rgba(56, 189, 248, 0.95)");
           grad.addColorStop(1, "rgba(56, 189, 248, 0)");
+        } else if (isCameraSteady) {
+          grad.addColorStop(0, "rgba(34, 197, 94, 0)");
+          grad.addColorStop(0.5, "rgba(34, 197, 94, 0.85)");
+          grad.addColorStop(1, "rgba(34, 197, 94, 0)");
         } else {
           grad.addColorStop(0, "rgba(250, 204, 21, 0)");
           grad.addColorStop(0.5, "rgba(250, 204, 21, 0.75)");
@@ -171,17 +178,19 @@ export function CameraViewport({
         // Dynamic Tag below reticle
         const reticleLabel = isProcessing
           ? "⚡ SEARCHING VEHICLE MAKE & MODEL VIA META VISION..."
-          : "⦿ BUMBLEBEE AR SPATIAL PERCEPTION — ALIGN ENGINE / COMPONENT";
+          : isCameraSteady
+            ? "⦿ TARGET LOCKED — FRAME STEADY (READY FOR AUTO-SCAN)"
+            : "⦿ BUMBLEBEE AR SPATIAL PERCEPTION — ALIGN ENGINE / COMPONENT";
         ctx.font = "600 11px 'Inter', sans-serif";
         const tagW = ctx.measureText(reticleLabel).width;
         ctx.fillStyle = "rgba(7, 9, 13, 0.92)";
-        ctx.strokeStyle = isProcessing ? "rgba(56, 189, 248, 0.6)" : "rgba(250, 204, 21, 0.4)";
+        ctx.strokeStyle = isProcessing ? "rgba(56, 189, 248, 0.6)" : isCameraSteady ? "rgba(34, 197, 94, 0.6)" : "rgba(250, 204, 21, 0.4)";
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.roundRect(cx - tagW / 2 - 12, y2 + 14, tagW + 24, 24, 12);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = isProcessing ? "#38BDF8" : "#FACC15";
+        ctx.fillStyle = primaryColor;
         ctx.fillText(reticleLabel, cx - tagW / 2, y2 + 30);
       }
 
@@ -272,7 +281,7 @@ export function CameraViewport({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [components, selectedComponent, phase, isProcessing]);
+  }, [components, selectedComponent, phase, isProcessing, isCameraSteady]);
 
   return (
     <div
