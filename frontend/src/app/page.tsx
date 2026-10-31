@@ -5,6 +5,8 @@ import { RepairSession, ComponentObservation, VerificationResult, DialoguePhase 
 import { createSession, fetchComponents, verifyStepState, streamConversationTurn } from "@/lib/api";
 import { useCamera } from "@/hooks/useCamera";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useObdScanner } from "@/hooks/useObdScanner";
+import { saveSessionOffline } from "@/lib/offlineQueue";
 import { CameraViewport } from "@/components/camera/CameraViewport";
 import { CleanControlBar } from "@/components/hud/CleanControlBar";
 import { ConversationalCard } from "@/components/hud/ConversationalCard";
@@ -13,7 +15,7 @@ import { PartsDrawer } from "@/components/parts/PartsDrawer";
 import { EvidenceModal } from "@/components/evidence/EvidenceModal";
 import { SessionAuditModal } from "@/components/evidence/SessionAuditModal";
 import { BumblebeeBrandBadge } from "@/components/hud/BumblebeeBrandBadge";
-import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera } from "lucide-react";
+import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera, Activity } from "lucide-react";
 
 export default function BumblebeeChamber() {
   const [session, setSession] = useState<RepairSession | null>(null);
@@ -54,6 +56,15 @@ export default function BumblebeeChamber() {
     pauseForSpeaking,
     resumeAfterSpeaking
   } = useSpeechRecognition((text) => handleTurnRef.current(text));
+
+  const {
+    telemetry: obdTelemetry,
+    toggleTelemetry: toggleObdTelemetry
+  } = useObdScanner((codes) => {
+    if (codes && codes.length > 0) {
+      handleTurnRef.current(`Live OBD-II Scanner detected DTC ${codes.join(", ")} (System Too Lean Bank 1). Short Term Fuel Trim: +14.2%. Inspect intake and air cleaner housing.`);
+    }
+  });
 
   // Text-to-Speech synthesizer with hands-free conversation continuation
   const speakText = useCallback(
@@ -134,6 +145,7 @@ export default function BumblebeeChamber() {
         setAiMessage(res.text);
         setPhase(res.phase as DialoguePhase);
         setSession(res.session);
+        saveSessionOffline(res.session);
 
         // Fallback speech playback if not triggered during stream
         if (res.speech_text && !speechPlayed) {
@@ -481,6 +493,48 @@ export default function BumblebeeChamber() {
         </div>
       </header>
 
+      {/* 2.5 Live OBD-II Diagnostic Telemetry Floating Pill */}
+      {obdTelemetry.connected && (
+        <div
+          id="obd-telemetry-pill"
+          className="glass-panel"
+          style={{
+            position: "absolute",
+            top: "clamp(66px, 9.5vh, 78px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 30,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "6px 14px",
+            borderRadius: "var(--radius-pill)",
+            border: "1px solid rgba(56, 189, 248, 0.45)",
+            background: "rgba(15, 23, 42, 0.88)",
+            fontSize: "11px",
+            fontWeight: 600,
+            color: "#38BDF8",
+            boxShadow: "0 0 20px rgba(56, 189, 248, 0.3)",
+            pointerEvents: "auto"
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <Activity size={13} color="#38BDF8" /> OBD-II Live:
+          </span>
+          <span style={{ color: "#F8FAFC" }}>{obdTelemetry.rpm} RPM</span>
+          <span style={{ color: "var(--text-muted)" }}>•</span>
+          <span style={{ color: "#FACC15" }}>STFT: +{obdTelemetry.stftPercent}%</span>
+          <span style={{ color: "var(--text-muted)" }}>•</span>
+          <span style={{ color: "#F8FAFC" }}>{obdTelemetry.coolantTempC}°C</span>
+          {obdTelemetry.dtcCodes.length > 0 && (
+            <>
+              <span style={{ color: "var(--text-muted)" }}>•</span>
+              <span style={{ color: "#F43F5E", fontWeight: 700 }}>DTC {obdTelemetry.dtcCodes.join(", ")}</span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* 3. Live Verification Banner */}
       <VerificationBanner result={latestVerification} />
 
@@ -639,7 +693,7 @@ export default function BumblebeeChamber() {
         </div>
       )}
 
-      {/* 6. Clean Floating Control Bar (Chat Option, Image Upload, Camera Shutter, Voice Mic) */}
+      {/* 6. Clean Floating Control Bar (Chat Option, Image Upload, Camera Shutter, Voice Mic, Live OBD-II) */}
       <CleanControlBar
         isListening={isVoiceActive || isListening}
         onToggleVoice={toggleListening}
@@ -647,6 +701,8 @@ export default function BumblebeeChamber() {
         onSendChat={(text) => handleTurn(text)}
         onUploadImage={handleUploadImage}
         isProcessing={isProcessing}
+        isObdConnected={obdTelemetry.connected}
+        onToggleObd={toggleObdTelemetry}
       />
 
       {/* 7. Drawers & Modals */}

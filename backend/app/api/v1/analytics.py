@@ -92,3 +92,10 @@ def get_single_session_image(session_id: str, image_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Image frame not found")
         return dict(row)
+
+
+@router.get("/export/dataset", response_model=Dict[str, Any])
+def export_training_dataset(min_rating: int = Query(4, ge=1, le=5)):
+    """Exports validated field repairs and technician feedback into training datasets."""
+    from app.services.active_learning import ActiveLearningService
+    return ActiveLearningService.compile_fine_tuning_dataset(min_rating=min_rating)

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Camera, Mic, MicOff, MessageSquare, Send, X, Image as ImageIcon } from "lucide-react";
+import { Camera, Mic, MicOff, MessageSquare, Send, X, Image as ImageIcon, Activity } from "lucide-react";
 
 interface CleanControlBarProps {
   isListening: boolean;
@@ -10,6 +10,8 @@ interface CleanControlBarProps {
   onSendChat: (text: string) => void;
   onUploadImage?: (base64: string) => void;
   isProcessing: boolean;
+  isObdConnected?: boolean;
+  onToggleObd?: () => void;
 }
 
 export function CleanControlBar({
@@ -18,7 +20,9 @@ export function CleanControlBar({
   onCaptureCamera,
   onSendChat,
   onUploadImage,
-  isProcessing
+  isProcessing,
+  isObdConnected = false,
+  onToggleObd
 }: CleanControlBarProps) {
   const [showChatInput, setShowChatInput] = useState(false);
   const [chatText, setChatText] = useState("");
@@ -147,6 +151,31 @@ export function CleanControlBar({
           style={{ display: "none" }}
           onChange={handleFileChange}
         />
+
+        {/* 0. Live OBD-II Diagnostic Telemetry Toggle */}
+        {onToggleObd && (
+          <button
+            id="btn-obd-telemetry"
+            onClick={onToggleObd}
+            title={isObdConnected ? "OBD-II Telemetry Connected (Tap to disconnect)" : "Connect Live OBD-II Bluetooth Telemetry"}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: isObdConnected ? "rgba(56, 189, 248, 0.25)" : "var(--bg-surface-2)",
+              color: isObdConnected ? "#38BDF8" : "var(--text-secondary)",
+              border: isObdConnected ? "1px solid #38BDF8" : "1px solid var(--border-subtle)",
+              cursor: "pointer",
+              transition: "var(--transition-fast)",
+              boxShadow: isObdConnected ? "0 0 14px rgba(56, 189, 248, 0.5)" : "none"
+            }}
+          >
+            <Activity size={19} />
+          </button>
+        )}
 
         {/* 1. Chat Option */}
         <button

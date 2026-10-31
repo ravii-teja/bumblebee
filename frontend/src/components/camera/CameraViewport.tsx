@@ -268,6 +268,22 @@ export function CameraViewport({
 
           ctx.fillStyle = "#FACC15";
           ctx.fillText(labelText, labelX + 4, labelY - 12);
+
+          // Multi-angle inspection guidance for critical sealing steps
+          if (stepNumber === 6) {
+            const tiltLabel = "⤹ MULTI-ANGLE VERIFICATION: TILT 30° TOWARD REAR HINGES TO CONFIRM SEAL";
+            ctx.font = "700 11px 'Inter', sans-serif";
+            const tiltW = ctx.measureText(tiltLabel).width;
+            ctx.fillStyle = "rgba(15, 23, 42, 0.94)";
+            ctx.strokeStyle = "#38BDF8";
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.roundRect(width * 0.5 - tiltW / 2 - 12, height * 0.22, tiltW + 24, 26, 13);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "#38BDF8";
+            ctx.fillText(tiltLabel, width * 0.5 - tiltW / 2, height * 0.22 + 17);
+          }
         }
       }
 
@@ -281,7 +297,7 @@ export function CameraViewport({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [components, selectedComponent, phase, isProcessing, isCameraSteady]);
+  }, [components, selectedComponent, phase, isProcessing, isCameraSteady, stepNumber]);
 
   return (
     <div

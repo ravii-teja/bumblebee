@@ -192,4 +192,20 @@ def test_database_persistence_and_analytics():
     assert stats["average_technician_rating"] >= 4.0
 
 
+def test_active_learning_dataset_export():
+    """Tests active learning JSONL dataset compilation from high-rated technician repairs."""
+    res = client.get("/api/v1/analytics/export/dataset?min_rating=4")
+    assert res.status_code == 200
+    dataset = res.json()
+    assert dataset["dataset_version"] == "1.0-active-learning"
+    assert "records" in dataset
+    assert isinstance(dataset["records"], list)
+    assert len(dataset["records"]) >= 1
+    first_record = dataset["records"][0]
+    assert "vehicle" in first_record
+    assert "diagnostic_ground_truth" in first_record
+    assert "conversational_dialogue_turns" in first_record
+
+
+
 

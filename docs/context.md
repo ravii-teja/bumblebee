@@ -190,3 +190,22 @@ Bumblebee incorporates a zero-dependency **SQLite Write-Ahead Logging (WAL)** da
    - `GET /sessions/{session_id}`: Full session dossier bundle for audits.
    - `GET /stats`: Aggregate platform metrics (total sessions, completion rate, common vehicles, step success rate, average technician rating).
    - `POST /sessions/{session_id}/feedback`: Records diagnostic accuracy feedback and parts installed.
+   - `GET /export/dataset`: Exports high-rated technician repairs into JSONL active learning datasets.
+
+---
+
+## 8. High-Performance Enhancements & Field Capabilities
+
+1. **Live OBD-II Bluetooth Telemetry (`useObdScanner.ts`):**
+   - Connects directly to ELM327 BLE OBD-II dongles using the **Web Bluetooth API** (`navigator.bluetooth`).
+   - Ingests real-time RPM, Short/Long-Term Fuel Trims (STFT/LTFT), Coolant Temperature, and stored DTC codes directly into the HUD and diagnostic state machine with 0 network latency.
+
+2. **Offline-First Field Resilience (`offlineQueue.ts`):**
+   - Utilizes browser-native **IndexedDB** (`BumblebeeFieldDB`) to cache sessions, factory repair manuals, and pending verification queues for mechanics in underground garages or weak connectivity areas.
+
+3. **Active Learning & Multimodal Fine-Tuning Pipeline (`active_learning.py`):**
+   - Automatically filters verified sessions with $\ge 4$-star technician ratings into formatted multimodal JSONL training examples.
+   - Includes a standalone CLI exporter (`backend/scripts/export_active_learning_dataset.py`) for compiling fine-tuning datasets for Meta Llama 3.2 Vision.
+
+4. **Dual-Angle / Multi-Angle Step Verification (`CameraViewport.tsx`):**
+   - Provides dynamic tilt guidance (`[ ⤹ MULTI-ANGLE VERIFICATION: TILT 30° TOWARD REAR HINGES ]`) during critical sealing steps (e.g. airbox upper lid engagement) to prevent unmetered air leaks and false positives.
