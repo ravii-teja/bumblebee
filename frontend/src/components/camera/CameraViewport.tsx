@@ -15,6 +15,7 @@ interface CameraViewportProps {
   phase: string;
   facingMode?: "environment" | "user";
   onStartCamera?: () => void;
+  onCapture?: () => void;
   useSimulation?: boolean;
   onToggleSimulation?: () => void;
   isProcessing?: boolean;
@@ -31,6 +32,7 @@ export function CameraViewport({
   phase,
   facingMode = "environment",
   onStartCamera,
+  onCapture,
   useSimulation = false,
   onToggleSimulation,
   isProcessing = false,
@@ -41,6 +43,7 @@ export function CameraViewport({
   const animationFrameRef = useRef<number | null>(null);
   const scanLineOffsetRef = useRef<number>(0);
   const [showSchematicOverlay, setShowSchematicOverlay] = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
 
   // Bind stream if videoRef was mounted after stream resolution
   useEffect(() => {
@@ -177,10 +180,12 @@ export function CameraViewport({
 
         // Dynamic Tag below reticle
         const reticleLabel = isProcessing
-          ? "⚡ SEARCHING VEHICLE MAKE & MODEL VIA META VISION..."
-          : isCameraSteady
-            ? "⦿ TARGET LOCKED — FRAME STEADY (READY FOR AUTO-SCAN)"
-            : "⦿ BUMBLEBEE AR SPATIAL PERCEPTION — ALIGN ENGINE / COMPONENT";
+          ? "⚡ SEARCHING VEHICLE ONLINE & IDENTIFYING MAKE & MODEL..."
+          : phase === "SCAN_VEHICLE"
+            ? (isCameraSteady ? "⦿ CAR ALIGNED — CLICK SCREEN OR SHUTTER TO SEARCH ONLINE" : "⦿ POINT AT CAR & CLICK TO SEARCH ONLINE")
+            : isCameraSteady
+              ? "⦿ TARGET LOCKED — FRAME STEADY"
+              : "⦿ BUMBLEBEE AR SPATIAL PERCEPTION — ALIGN ENGINE / COMPONENT";
         ctx.font = "600 11px 'Inter', sans-serif";
         const tagW = ctx.measureText(reticleLabel).width;
         ctx.fillStyle = "rgba(7, 9, 13, 0.92)";
@@ -299,10 +304,24 @@ export function CameraViewport({
     };
   }, [components, selectedComponent, phase, isProcessing, isCameraSteady, stepNumber]);
 
+  const handleViewportClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("form") || target.closest(".glass-panel")) {
+      return;
+    }
+    if ((hasCamera || useSimulation) && onCapture && !isProcessing) {
+      setIsFlashing(true);
+      setTimeout(() => setIsFlashing(false), 200);
+      onCapture();
+    }
+  };
+
   return (
     <div
       ref={containerRef}
       id="ar-camera-viewport-container"
+      onClick={handleViewportClick}
+      title="Point at car and click to search online"
       style={{
         position: "absolute",
         top: 0,
@@ -310,9 +329,26 @@ export function CameraViewport({
         width: "100vw",
         height: "100vh",
         backgroundColor: "#07090D",
-        overflow: "hidden"
+        overflow: "hidden",
+        cursor: (hasCamera || useSimulation) && !isProcessing ? "crosshair" : "default"
       }}
     >
+      {/* Visual Shutter Click Flash */}
+      {isFlashing && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            zIndex: 30,
+            backgroundColor: "rgba(255, 255, 255, 0.4)",
+            pointerEvents: "none"
+          }}
+        />
+      )}
+
       {/* 1. Fullscreen Live Camera Video Feed (Primary AR Ground) */}
       <video
         ref={videoRef}

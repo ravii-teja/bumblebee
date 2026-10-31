@@ -289,6 +289,7 @@ export default function BumblebeeChamber() {
         phase={phase}
         facingMode={facingMode}
         onStartCamera={startCamera}
+        onCapture={handleCameraScan}
         useSimulation={useSimulation}
         onToggleSimulation={() => setUseSimulation((s) => !s)}
         isCameraSteady={isCameraSteady}

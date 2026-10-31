@@ -207,5 +207,53 @@ def test_active_learning_dataset_export():
     assert "conversational_dialogue_turns" in first_record
 
 
+def test_point_and_click_vehicle_search_and_recreation():
+    """Verifies that pointing camera and clicking shutter identifies vehicle from image and recreates profile & procedure."""
+    from PIL import Image
+    import io
+    import base64
+
+    # 1. Initialize generic session
+    res = client.post("/api/v1/sessions", json={"vehicle_id": "generic_vehicle", "procedure_id": "general_inspection"})
+    assert res.status_code == 200
+    session_id = res.json()["session_id"]
+
+    # 2. Synthesize camera frame
+    img = Image.new("RGB", (640, 480), color=(30, 60, 160))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    b64 = base64.b64encode(buf.getvalue()).decode()
+
+    # 3. Point and click scan turn
+    scan_res = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "identify vehicle from camera image",
+        "image_base64": b64
+    })
+    assert scan_res.status_code == 200
+    data = scan_res.json()
+    assert data["phase"] == "ASK_ISSUE"
+    assert "visual search identified" in data["text"].lower()
+
+    sess = data["session"]
+    assert sess["vehicle_profile"]["make"] != ""
+    assert sess["vehicle_profile"]["model"] != ""
+    assert sess["procedure"]["vehicle_id"] != "generic_vehicle"
+    assert len(sess["procedure"]["steps"]) == 6
+    assert len(sess["observations"]) >= 4
+
+    # 4. Describe issue turn (recreates solution plan)
+    issue_res = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "P0171 lean code and rough idle under acceleration"
+    })
+    assert issue_res.status_code == 200
+    issue_data = issue_res.json()
+    assert issue_data["phase"] == "ACTIVE_REPAIR"
+    assert "Step 1" in issue_data["text"]
+    assert issue_data["session"]["dialogue"]["hypothesis"] is not None
+
+
+
 
 

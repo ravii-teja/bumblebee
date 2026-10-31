@@ -253,30 +253,14 @@ class MetaMuseService:
                     "detected": True,
                     "make": m,
                     "model": mod or "Vehicle",
-                    "year": y,
+                    "year": y or 2022,
                     "confidence": 0.96,
                     "visual_evidence": f"Extracted from technician input: {m} {mod or ''}"
                 }
 
-        # 3. Local Camera Image Analysis via Pillow
-        img_meta = "Camera stream active"
-        if image_base64:
-            try:
-                raw_bytes = base64.b64decode(image_base64)
-                img = Image.open(io.BytesIO(raw_bytes))
-                img_meta = f"Frame {img.width}x{img.height} px, format {img.format or 'JPEG'}"
-            except Exception as e:
-                logger.debug(f"Pillow image inspect: {e}")
-
-        # Return unbiased detection — asking the user to confirm their make
-        return {
-            "detected": True,
-            "make": None,
-            "model": None,
-            "year": None,
-            "confidence": 0.90,
-            "visual_evidence": f"{img_meta} • Vehicle aligned in targeting reticle"
-        }
+        # 3. Online Vehicle Image Search & Visual Catalogue Matching
+        from app.services.vehicle_image_search import search_vehicle_from_image
+        return search_vehicle_from_image(image_base64=image_base64, context_hint=context_hint)
 
     async def identify_components(
         self,

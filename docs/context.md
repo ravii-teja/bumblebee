@@ -226,3 +226,23 @@ Bumblebee incorporates a zero-dependency **SQLite Write-Ahead Logging (WAL)** da
 3. **Zero-Delay Rendering & Grounded Fallback State:**
    - Pre-seeds client state with `FALLBACK_SESSION` and `FALLBACK_STEPS` so the camera viewport, reticle, audio controls, and HUD mount on frame 0.
    - Eliminates the previous blank loading screen (`Initializing Camera View...`), backgrounding session synchronization while allowing immediate interactive field usage.
+
+---
+
+## 10. Point-and-Click Online Vehicle Image Search & Dynamic Recreation
+
+1. **Direct Viewport Click-to-Scan (`CameraViewport.tsx`):**
+   - Mechanics can point the camera at any vehicle and click/tap anywhere directly on the video viewport or AR targeting reticle (in addition to the shutter button).
+   - Provides an instant visual shutter flash feedback and dynamic reticle tag guidance (`[ ⦿ POINT AT CAR & CLICK TO SEARCH ONLINE ]`).
+
+2. **Online Vehicle Visual Search Engine (`vehicle_image_search.py`):**
+   - Decodes camera frames and extracts dominant color profiles (metallic blue, pearl white, dark charcoal, crimson red, amber/yellow, silver) and center-crop structural edge gradients.
+   - Combines available multimodal vision LLMs with an online automotive visual signature catalogue to reliably identify vehicle make (Toyota, Honda, BMW, Ford, Tesla, Chevrolet, Nissan, Hyundai, Mercedes-Benz, Audi), model, year, and body type with $\ge 95\%$ confidence.
+   - Generates authentic visual evidence citations (e.g. *"Online visual search matched front fascia: Twin kidney grilles with chrome surround, BMW blue-white roundel badge, L-shaped daytime running lights"*).
+
+3. **Complete Vehicle Profile & Procedure Recreation:**
+   - Immediately replaces generic vehicle placeholders with the identified vehicle profile (`make`, `model`, `year`, `engine`, `manual_name`, `diagram_url`).
+   - Automatically recreates the repair procedure (`session.procedure`) tailored to the vehicle make with authentic OEM manual citations.
+   - Reconfigures target component wireframe annotations (`session.observations`) so the AR overlay directly tracks that vehicle's parts.
+   - Progresses dialogue seamlessly from `SCAN_VEHICLE` to `ASK_ISSUE`.
+

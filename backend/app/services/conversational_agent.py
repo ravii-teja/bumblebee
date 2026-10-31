@@ -160,6 +160,10 @@ class ConversationalAgentService:
                 model=dialogue.model,
                 year=dialogue.year
             )
+            session.procedure = create_dynamic_procedure(
+                session.vehicle_profile,
+                "General Inspection & Field Verification"
+            )
             dialogue.phase = "ASK_ISSUE"
 
             text = f"Confirmed: **{session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
@@ -205,12 +209,26 @@ class ConversationalAgentService:
                     model=detected_model,
                     year=detected_year
                 )
+                session.procedure = create_dynamic_procedure(
+                    session.vehicle_profile,
+                    "General Inspection & Field Verification"
+                )
+
+                # Tailor initial component wireframes to vehicle
+                dynamic_comps = []
+                for c in RAV4_COMPONENTS:
+                    comp_copy = c.model_copy()
+                    if c.component_id == "air_cleaner_assembly":
+                        comp_copy.name = f"{detected_make} {detected_model} Engine Air Cleaner Housing"
+                        comp_copy.description = f"Houses the replaceable air filter element that cleans intake air for the {detected_make} {detected_model}."
+                    dynamic_comps.append(comp_copy)
+                session.observations = dynamic_comps
 
                 text = (
-                    f"Visual search identified vehicle: **{detected_year} {detected_make} {detected_model}** "
+                    f"Online visual search identified vehicle: **{detected_year} {detected_make} {detected_model}** "
                     f"({evidence}).\n\nWhat issue or symptom are you experiencing with this vehicle?"
                 )
-                speech = f"Identified {detected_year} {detected_make} {detected_model} from visual search. What issue or symptom are you experiencing with this vehicle?"
+                speech = f"Online visual search identified {detected_year} {detected_make} {detected_model}. What issue or symptom are you experiencing with this vehicle?"
                 return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump(), "detection_meta": detection}
 
             # 2. Make identified, ask for model and year
@@ -221,10 +239,10 @@ class ConversationalAgentService:
                 session.vehicle_profile.make = detected_make
 
                 text = (
-                    f"Visual search identified vehicle make: **{detected_make}** ({evidence}).\n\n"
+                    f"Online visual search identified vehicle make: **{detected_make}** ({evidence}).\n\n"
                     f"What **model** and **year** is your {detected_make}?"
                 )
-                speech = f"Visual search identified vehicle make as {detected_make}. What model and year is your {detected_make}?"
+                speech = f"Online visual search identified vehicle make as {detected_make}. What model and year is your {detected_make}?"
                 return text, speech, "ASK_MODEL_YEAR", {"make": detected_make, "detection_meta": detection}
 
             # 3. Frame scanned but make inconclusive
@@ -259,9 +277,13 @@ class ConversationalAgentService:
                         model=det_model,
                         year=det_year
                     )
-                    text = f"Visual search identified **{det_year} {det_make} {det_model}** ({detection.get('visual_evidence', '')}).\n\nWhat issue or symptom are you experiencing?"
+                    session.procedure = create_dynamic_procedure(
+                        session.vehicle_profile,
+                        "General Inspection & Field Verification"
+                    )
+                    text = f"Online visual search identified **{det_year} {det_make} {det_model}** ({detection.get('visual_evidence', '')}).\n\nWhat issue or symptom are you experiencing?"
                     speech = f"Identified {det_year} {det_make} {det_model} from visual search. What issue or symptom are you experiencing?"
-                    return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
+                    return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump(), "detection_meta": detection}
 
             if any(w in input_lower for w in ["yes", "yeah", "yep", "correct", "right", "confirm", "true"]):
                 make = dialogue.detected_make or extracted_make or "Vehicle"
@@ -271,8 +293,12 @@ class ConversationalAgentService:
                 speech = f"Great! What model and year is your {make}?"
                 return text, speech, "ASK_MODEL_YEAR", {"confirmed_make": make}
             else:
-                # User provided another make
-                new_make = extracted_make or input_clean.replace("no", "").replace("it's a", "").replace("it is a", "").strip().title()
+                # Check if this input was an automated camera command
+                is_camera_cmd = any(cmd in input_lower for cmd in ["identify", "camera", "image", "scan", "photo", "shutter", "frame"])
+                if is_camera_cmd:
+                    new_make = extracted_make or dialogue.detected_make or "Vehicle"
+                else:
+                    new_make = extracted_make or input_clean.replace("no", "").replace("it's a", "").replace("it is a", "").strip().title()
                 if not new_make or len(new_make) < 2:
                     new_make = "Vehicle"
                 dialogue.confirmed_make = new_make
@@ -303,6 +329,10 @@ class ConversationalAgentService:
                 make=make,
                 model=model,
                 year=year
+            )
+            session.procedure = create_dynamic_procedure(
+                session.vehicle_profile,
+                "General Inspection & Field Verification"
             )
 
             text = f"Confirmed: **{year} {make} {model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
