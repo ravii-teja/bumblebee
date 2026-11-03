@@ -243,7 +243,7 @@ export default function BumblebeeChamber() {
   const getTopInstruction = () => {
     switch (phase) {
       case "SCAN_VEHICLE":
-        return "Point camera at car & tap shutter";
+        return "Point camera at car & tap screen or shutter";
       case "CONFIRM_MAKE":
         return "Confirm Vehicle Make";
       case "ASK_MODEL_YEAR":
@@ -255,7 +255,7 @@ export default function BumblebeeChamber() {
       case "COMPLETED":
         return "Procedure Completed";
       default:
-        return "Point camera at car & tap shutter";
+        return "Point camera at car & tap screen or shutter";
     }
   };
 

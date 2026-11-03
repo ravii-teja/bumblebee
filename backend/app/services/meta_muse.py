@@ -65,7 +65,7 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
         except Exception as e:
             logger.warning(f"Gemini Vision call failed: {e}")
 
-    # 2. Meta Multimodal Vision (Meta Model API: muse-wonder-1.0 / muse-spark-1.3 with JSON object mode)
+    # 2. Meta Multimodal Vision (Meta Model API: muse-spark-1.3 / muse-wonder-1.0 with JSON object mode)
     if META_API_KEY:
         try:
             headers = {
@@ -73,8 +73,10 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
                 "Content-Type": "application/json",
                 "User-Agent": "MetaHackathon/2026 Bumblebee"
             }
+            # Prefer fast muse-spark-1.3 (2-3s inference) over muse-wonder-1.0 (15-20s deep reasoning)
+            model_to_use = "muse-spark-1.3" if META_MODEL_NAME in ["muse-wonder-1.0", "muse-spark-1.3"] else META_MODEL_NAME
             payload = {
-                "model": META_MODEL_NAME,
+                "model": model_to_use,
                 "messages": [
                     {
                         "role": "user",
@@ -85,10 +87,10 @@ async def call_any_vision_llm(prompt: str, image_base64: str) -> Optional[str]:
                     }
                 ],
                 "response_format": {"type": "json_object"},
-                "max_tokens": 2000,
+                "max_tokens": 1500,
                 "temperature": 0.1
             }
-            async with httpx.AsyncClient(timeout=25.0) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 res = await client.post(META_API_ENDPOINT, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
@@ -240,6 +242,16 @@ class MetaMuseService:
                                 "year": clean_year,
                                 "confidence": float(parsed.get("confidence", 0.95)),
                                 "visual_evidence": parsed.get("visual_evidence", "Online visual search identified vehicle profile")
+                            }
+
+                        if parsed.get("detected") is False or (not make_val and "no vehicle" in str(parsed.get("visual_evidence", "")).lower()):
+                            return {
+                                "detected": False,
+                                "make": None,
+                                "model": None,
+                                "year": None,
+                                "confidence": float(parsed.get("confidence", 0.3)),
+                                "visual_evidence": parsed.get("visual_evidence", "Vehicle front emblem or grille not distinctly in frame. Align car in targeting reticle or confirm make below.")
                             }
                 except Exception as ex:
                     logger.warning(f"Failed to parse LLM vision output: {ex}")

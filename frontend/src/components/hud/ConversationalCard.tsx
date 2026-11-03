@@ -140,6 +140,48 @@ export function ConversationalCard({
 
       {/* Quick Action Chips & Controls */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "2px" }}>
+        {/* Phase 0: Standby Scan Vehicle */}
+        {phase === "SCAN_VEHICLE" && (
+          <>
+            <button
+              onClick={() => onQuickResponse("identify vehicle from camera image")}
+              style={{
+                padding: "6px 14px",
+                borderRadius: "var(--radius-pill)",
+                background: "linear-gradient(135deg, #FACC15 0%, #EAB308 100%)",
+                color: "#0F172A",
+                fontSize: "12px",
+                fontWeight: 700,
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                cursor: "pointer"
+              }}
+            >
+              <Sparkles size={13} />
+              <span>Tap to Scan Car</span>
+            </button>
+            {["Toyota", "Honda", "BMW", "Ford", "Tesla", "Chevrolet"].map((m) => (
+              <button
+                key={m}
+                onClick={() => onQuickResponse(m)}
+                style={{
+                  padding: "5px 11px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "var(--bg-surface-2)",
+                  color: "#E2E8F0",
+                  border: "1px solid var(--border-subtle)",
+                  fontSize: "12px",
+                  cursor: "pointer"
+                }}
+              >
+                {m}
+              </button>
+            ))}
+          </>
+        )}
+
         {/* Phase 1: Confirm Make */}
         {phase === "CONFIRM_MAKE" && (
           <>

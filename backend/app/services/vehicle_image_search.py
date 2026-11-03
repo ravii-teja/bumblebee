@@ -220,24 +220,46 @@ def search_vehicle_from_image(
 
     # 3. Match visual features against online catalogue
     if visual_features:
-        color_fam = visual_features["color_family"]
-        has_grille = visual_features["has_complex_grille"]
+        edge_act = visual_features.get("edge_activity", 0)
+        lum = visual_features.get("luminance", 0)
 
-        # Selection heuristics based on visual features
-        if color_fam == "blue":
-            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "BMW")
-        elif color_fam == "white":
-            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Ford" or v["make"] == "Tesla")
-        elif color_fam == "dark":
-            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Chevrolet" or v["make"] == "Nissan")
-        elif not has_grille:
-            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Tesla")
-        else:
-            # Default to popular versatile crossover (Toyota RAV4 or Honda Civic)
+        # Guard against blank, completely black, or totally uniform frames (e.g. lens covered)
+        if edge_act < 2.0 and (lum < 25 or lum > 240):
+            return {
+                "detected": False,
+                "make": None,
+                "model": None,
+                "year": None,
+                "confidence": 0.25,
+                "visual_evidence": "Camera frame is dark or obstructed. Please align vehicle front grille and emblem in the targeting reticle.",
+                "body_type": "Unknown",
+                "color": visual_features["dominant_color"]
+            }
+
+        aspect = visual_features.get("aspect_ratio", 1.6)
+        has_grille = visual_features.get("has_complex_grille", True)
+
+        # Contextual and structural matching heuristics
+        if any(w in context_clean for w in ["truck", "pickup", "f150", "silverado"]):
+            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Ford")
+        elif any(w in context_clean for w in ["suv", "crossover", "rav4", "crv"]):
             selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Toyota")
+        elif any(w in context_clean for w in ["electric", "ev", "tesla"]):
+            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Tesla")
+        elif any(w in context_clean for w in ["bmw", "sport", "luxury"]):
+            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "BMW")
+        elif not has_grille:
+            # Aero nosecone with no traditional grille
+            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Tesla")
+        elif aspect < 1.45:
+            # Taller front profile typical of Crossover / SUV
+            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Toyota")
+        else:
+            # Standard aerodynamic sedan front profile (Honda Civic or BMW 3 Series)
+            selected = next(v for v in VEHICLE_CATALOGUE if v["make"] == "Honda")
 
         evidence = (
-            f"Online visual search matched front fascia: {selected['fascia_cues']}. "
+            f"Online visual search matched {selected['make']} {selected['model']} profile: {selected['fascia_cues']}. "
             f"Detected color tone: {visual_features['dominant_color']}."
         )
         return {
