@@ -105,6 +105,50 @@ KNOWN_MAKES = [
 ]
 
 
+POPULAR_MODEL_TO_MAKE = {
+    # Honda
+    "Civic": "Honda", "Accord": "Honda", "CR-V": "Honda", "Pilot": "Honda", "Fit": "Honda", "HR-V": "Honda", "Passport": "Honda", "Ridgeline": "Honda", "Odyssey": "Honda",
+    # Toyota
+    "RAV4": "Toyota", "Camry": "Toyota", "Corolla": "Toyota", "Highlander": "Toyota", "Tacoma": "Toyota", "Tundra": "Toyota", "Prius": "Toyota", "4Runner": "Toyota", "Sienna": "Toyota", "Yaris": "Toyota", "Sequoia": "Toyota", "Crown": "Toyota", "Venza": "Toyota",
+    # Ford
+    "F-150": "Ford", "Mustang": "Ford", "Explorer": "Ford", "Escape": "Ford", "Edge": "Ford", "Bronco": "Ford", "Ranger": "Ford", "Expedition": "Ford", "Fusion": "Ford", "Focus": "Ford", "F-250": "Ford", "F-350": "Ford",
+    # Chevrolet
+    "Silverado": "Chevrolet", "Malibu": "Chevrolet", "Equinox": "Chevrolet", "Tahoe": "Chevrolet", "Suburban": "Chevrolet", "Colorado": "Chevrolet", "Trax": "Chevrolet", "Camaro": "Chevrolet", "Corvette": "Chevrolet", "Blazer": "Chevrolet", "Traverse": "Chevrolet",
+    # BMW
+    "3 Series": "BMW", "5 Series": "BMW", "7 Series": "BMW", "M3": "BMW", "M4": "BMW", "M5": "BMW", "X1": "BMW", "X3": "BMW", "X5": "BMW", "X7": "BMW", "330i": "BMW", "M340i": "BMW", "530i": "BMW",
+    # Tesla
+    "Model 3": "Tesla", "Model Y": "Tesla", "Model S": "Tesla", "Model X": "Tesla", "Cybertruck": "Tesla",
+    # Subaru
+    "Outback": "Subaru", "Forester": "Subaru", "Crosstrek": "Subaru", "Impreza": "Subaru", "WRX": "Subaru", "Ascent": "Subaru", "Legacy": "Subaru", "BRZ": "Subaru",
+    # Volkswagen
+    "Golf": "Volkswagen", "Jetta": "Volkswagen", "Tiguan": "Volkswagen", "Atlas": "Volkswagen", "Passat": "Volkswagen", "GTI": "Volkswagen", "ID.4": "Volkswagen",
+    # Mazda
+    "CX-5": "Mazda", "CX-30": "Mazda", "CX-50": "Mazda", "CX-90": "Mazda", "Mazda3": "Mazda", "Mazda6": "Mazda", "Miata": "Mazda", "MX-5": "Mazda",
+    # Hyundai
+    "Elantra": "Hyundai", "Sonata": "Hyundai", "Tucson": "Hyundai", "Santa Fe": "Hyundai", "Palisade": "Hyundai", "Kona": "Hyundai", "Ioniq": "Hyundai",
+    # Kia
+    "Forte": "Kia", "Optima": "Kia", "K5": "Kia", "Sportage": "Kia", "Sorento": "Kia", "Telluride": "Kia", "Soul": "Kia", "Carnival": "Kia", "EV6": "Kia",
+    # Nissan
+    "Altima": "Nissan", "Rogue": "Nissan", "Sentra": "Nissan", "Pathfinder": "Nissan", "Frontier": "Nissan", "Murano": "Nissan", "Maxima": "Nissan",
+    # Jeep
+    "Wrangler": "Jeep", "Grand Cherokee": "Jeep", "Cherokee": "Jeep", "Gladiator": "Jeep", "Compass": "Jeep", "Renegade": "Jeep",
+    # Dodge / Ram
+    "Charger": "Dodge", "Challenger": "Dodge", "Durango": "Dodge", "1500": "Ram", "2500": "Ram",
+    # Audi
+    "A3": "Audi", "A4": "Audi", "A6": "Audi", "Q3": "Audi", "Q5": "Audi", "Q7": "Audi", "Q8": "Audi",
+    # Mercedes
+    "C-Class": "Mercedes-Benz", "E-Class": "Mercedes-Benz", "S-Class": "Mercedes-Benz", "GLC": "Mercedes-Benz", "GLE": "Mercedes-Benz", "GLS": "Mercedes-Benz",
+    # Lexus
+    "RX": "Lexus", "NX": "Lexus", "ES": "Lexus", "IS": "Lexus", "GX": "Lexus", "LX": "Lexus",
+    # Volvo
+    "XC40": "Volvo", "XC60": "Volvo", "XC90": "Volvo",
+    # Porsche
+    "911": "Porsche", "Cayenne": "Porsche", "Macan": "Porsche", "Panamera": "Porsche", "Taycan": "Porsche",
+    # GMC
+    "Sierra": "GMC", "Yukon": "GMC", "Acadia": "GMC", "Canyon": "GMC"
+}
+
+
 def extract_vehicle_entities(text: str) -> Tuple[Optional[str], Optional[str], Optional[int]]:
     """Extracts make, model, and year from natural speech or text."""
     clean = text.strip()
@@ -129,30 +173,14 @@ def extract_vehicle_entities(text: str) -> Tuple[Optional[str], Optional[str], O
 
     # Extract model
     found_model = None
-    popular_models = [
-        "Civic", "Accord", "CR-V", "Pilot", "Fit", "HR-V", "Passport", "Ridgeline",
-        "RAV4", "Camry", "Corolla", "Highlander", "Tacoma", "Tundra", "Prius", "4Runner", "Sienna",
-        "F-150", "Mustang", "Explorer", "Escape", "Edge", "Bronco", "Ranger",
-        "Silverado", "Malibu", "Equinox", "Tahoe", "Suburban", "Colorado", "Trax",
-        "3 Series", "5 Series", "7 Series", "M3", "M4", "M5", "X1", "X3", "X5", "X7",
-        "C-Class", "E-Class", "S-Class", "GLC", "GLE", "GLS", "A-Class",
-        "Altima", "Rogue", "Sentra", "Pathfinder", "Frontier", "Murano",
-        "Elantra", "Sonata", "Tucson", "Santa Fe", "Palisade", "Kona",
-        "Forte", "Optima", "K5", "Sportage", "Sorento", "Telluride", "Soul",
-        "Model 3", "Model Y", "Model S", "Model X", "Cybertruck",
-        "Outback", "Forester", "Crosstrek", "Impreza", "WRX", "Ascent",
-        "Golf", "Jetta", "Tiguan", "Atlas", "Passat", "GTI",
-        "CX-5", "CX-30", "CX-50", "CX-90", "Mazda3", "Mazda6", "Miata",
-        "Wrangler", "Grand Cherokee", "Cherokee", "Gladiator", "Compass",
-        "Charger", "Challenger", "Durango", "1500", "2500",
-        "RX", "NX", "ES", "IS", "GX", "XC60", "XC90", "XC40",
-        "911", "Cayenne", "Macan", "Panamera", "Taycan",
-        "Sierra", "Yukon", "Acadia", "Canyon"
-    ]
-    for model in popular_models:
+    for model in POPULAR_MODEL_TO_MAKE.keys():
         if re.search(rf"\b{re.escape(model)}\b", clean, re.IGNORECASE):
             found_model = model
             break
+
+    # If make is missing but model is recognized, infer make from model
+    if not found_make and found_model:
+        found_make = POPULAR_MODEL_TO_MAKE.get(found_model)
 
     # If no popular model matched, but make was found, try extracting candidate word following make
     if not found_model and found_make:
@@ -166,6 +194,19 @@ def extract_vehicle_entities(text: str) -> Tuple[Optional[str], Optional[str], O
                 found_model = candidate.title()
 
     return found_make, found_model, year
+
+
+def clean_text_of_vehicle(text: str, make: Optional[str] = None, model: Optional[str] = None, year: Optional[int] = None) -> str:
+    """Strips vehicle entities and filler words to extract any embedded issue description."""
+    res = text
+    if make:
+        res = re.sub(rf"\b{re.escape(make)}\b", "", res, flags=re.IGNORECASE)
+    if model:
+        res = re.sub(rf"\b{re.escape(model)}\b", "", res, flags=re.IGNORECASE)
+    if year:
+        res = re.sub(rf"\b{year}\b", "", res)
+    res = re.sub(r"\b(?:set|switch|change|add|my|car|is|a|an|the|i|have|drive|vehicle|to|with|has|having|please|for)\b", "", res, flags=re.IGNORECASE)
+    return res.strip(" :,-.")
 
 
 def extract_embedded_issue(text: str) -> Optional[str]:
@@ -236,6 +277,18 @@ class ConversationalAgentService:
         # Check if user directly provided make, model, or year in their message
         extracted_make, extracted_model, extracted_year = extract_vehicle_entities(input_clean)
 
+        # If make was not in string, infer from model or existing session
+        if not extracted_make and extracted_model:
+            extracted_make = (
+                POPULAR_MODEL_TO_MAKE.get(extracted_model)
+                or dialogue.confirmed_make
+                or (session.vehicle_profile.make if session.vehicle_profile.make and session.vehicle_profile.make != "generic_vehicle" else None)
+            )
+
+        # If make was in string, but not model, check if model exists in session
+        if extracted_make and not extracted_model and dialogue.model and dialogue.model not in ["Standard", "Sedan", "Vehicle", "General Vehicle"]:
+            extracted_model = dialogue.model
+
         # Explicit vehicle change/add intent keywords
         is_vehicle_intent = any(k in input_lower for k in [
             "switch car", "switch vehicle", "change car", "change vehicle", "add car",
@@ -243,8 +296,8 @@ class ConversationalAgentService:
             "i have a", "my car is", "i drive a", "select vehicle", "select car"
         ])
 
-        # If user explicitly requested to switch/add vehicle without naming make yet
-        if is_vehicle_intent and not extracted_make:
+        # If user explicitly requested to switch/add vehicle without naming make/model yet
+        if is_vehicle_intent and not extracted_make and not extracted_model:
             dialogue.phase = "SCAN_VEHICLE"
             dialogue.confirmed_make = None
             dialogue.detected_make = None
@@ -255,11 +308,17 @@ class ConversationalAgentService:
             speech = "Sure! Point your camera to scan, or tell me your vehicle make, model, and year."
             return text, speech, "SCAN_VEHICLE", {"action": "PROMPT_VEHICLE_SELECT"}
 
-        # If user provided make and (model or year) OR expressed vehicle switch intent with a make
-        if (extracted_make and (extracted_model or extracted_year)) or (is_vehicle_intent and extracted_make):
-            dialogue.confirmed_make = extracted_make
+        # If user provided make and (model or year) OR model and year OR expressed vehicle switch intent with a make/model
+        has_concrete_vehicle = (
+            (extracted_make and (extracted_model or extracted_year))
+            or (extracted_model and (extracted_year or extracted_make))
+            or (is_vehicle_intent and (extracted_make or extracted_model))
+        )
+
+        if has_concrete_vehicle:
+            dialogue.confirmed_make = extracted_make or "Toyota"
             dialogue.model = extracted_model or "Standard"
-            dialogue.year = extracted_year or 2022
+            dialogue.year = extracted_year or dialogue.year or 2022
 
             # Update session vehicle profile dynamically
             session.vehicle_profile = create_dynamic_vehicle_profile(
@@ -285,7 +344,9 @@ class ConversationalAgentService:
             session.observations = dynamic_comps
 
             # Check if user also provided an issue description in this message
-            embedded_issue = extract_embedded_issue(input_clean)
+            clean_rest = clean_text_of_vehicle(input_clean, dialogue.confirmed_make, dialogue.model, dialogue.year)
+            embedded_issue = extract_embedded_issue(input_clean) or (clean_rest if len(clean_rest) > 2 else None)
+
             if embedded_issue:
                 dialogue.reported_issue = embedded_issue
                 # Fall through into ASK_ISSUE diagnosis
@@ -296,14 +357,31 @@ class ConversationalAgentService:
                 dialogue.hypothesis = None
                 dialogue.phase = "ASK_ISSUE"
 
-                text = f"Vehicle set to **{session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
-                speech = f"Vehicle set to {session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}. What issue or symptom are you experiencing with this vehicle?"
+                text = f"Vehicle confirmed: **{session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
+                speech = f"Vehicle confirmed: {session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}. What issue or symptom are you experiencing with this vehicle?"
                 return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
 
         # -------------------------------------------------------------
         # Phase 1: SCAN_VEHICLE -> Analyze Camera Image & Online Search
         # -------------------------------------------------------------
         if phase == "SCAN_VEHICLE":
+            # If vehicle is already set in session, do NOT ask to scan car again!
+            if session.vehicle_profile.make and session.vehicle_profile.make != "generic_vehicle":
+                dialogue.phase = "ASK_ISSUE"
+                dialogue.confirmed_make = session.vehicle_profile.make
+                dialogue.model = session.vehicle_profile.model
+                dialogue.year = session.vehicle_profile.year
+                veh = session.vehicle_profile
+                clean_issue = clean_text_of_vehicle(input_clean, veh.make, veh.model, veh.year)
+                if len(clean_issue) > 2 and not any(cmd in input_lower for cmd in ["scan", "camera", "identify"]):
+                    dialogue.reported_issue = clean_issue
+                    phase = "ASK_ISSUE"
+                    user_input = clean_issue
+                else:
+                    text = f"Inspecting **{veh.year or 2022} {veh.make} {veh.model}**.\n\nWhat issue or symptom are you experiencing?"
+                    speech = f"Inspecting {veh.year or 2022} {veh.make} {veh.model}. What issue or symptom are you experiencing?"
+                    return text, speech, "ASK_ISSUE", {"vehicle": veh.model_dump()}
+
             # If user spoke/typed a make directly
             if extracted_make:
                 dialogue.detected_make = extracted_make
@@ -314,83 +392,103 @@ class ConversationalAgentService:
                 speech = f"Understood, {extracted_make}. What model and year is your {extracted_make}?"
                 return text, speech, "ASK_MODEL_YEAR", {"make": extracted_make}
 
-            # If user tapped camera shutter to scan vehicle or provided image
-            from app.services.meta_muse import MetaMuseService
-            detection = await MetaMuseService.detect_vehicle_make_model(
-                image_base64=image_base64,
-                context_hint=input_clean
+            # Only run image vision detection if image_base64 is present AND user specifically asked to scan or camera shutter clicked
+            if image_base64 and any(cmd in input_lower for cmd in ["identify", "camera", "image", "scan", "photo", "shutter"]):
+                from app.services.meta_muse import MetaMuseService
+                detection = await MetaMuseService.detect_vehicle_make_model(
+                    image_base64=image_base64,
+                    context_hint=input_clean
+                )
+                detected_make = detection.get("make")
+                detected_model = detection.get("model")
+                detected_year = detection.get("year") or 2022
+                evidence = detection.get("visual_evidence", "Online visual search identified vehicle profile")
+
+                # 1. Both Make & Model identified from camera image search
+                if detected_make and detected_model:
+                    dialogue.confirmed_make = detected_make
+                    dialogue.detected_make = detected_make
+                    dialogue.model = detected_model
+                    dialogue.year = detected_year
+                    dialogue.phase = "ASK_ISSUE"
+
+                    # Update session vehicle profile dynamically
+                    session.vehicle_profile = create_dynamic_vehicle_profile(
+                        make=detected_make,
+                        model=detected_model,
+                        year=detected_year
+                    )
+                    session.procedure = create_dynamic_procedure(
+                        session.vehicle_profile,
+                        "General Inspection & Field Verification"
+                    )
+
+                    # Tailor initial component wireframes to vehicle
+                    dynamic_comps = []
+                    for c in RAV4_COMPONENTS:
+                        comp_copy = c.model_copy()
+                        if c.component_id == "air_cleaner_assembly":
+                            comp_copy.name = f"{detected_make} {detected_model} Engine Air Cleaner Housing"
+                            comp_copy.description = f"Houses the replaceable air filter element that cleans intake air for the {detected_make} {detected_model}."
+                        dynamic_comps.append(comp_copy)
+                    session.observations = dynamic_comps
+
+                    text = (
+                        f"Online visual search identified vehicle: **{detected_year} {detected_make} {detected_model}** "
+                        f"({evidence}).\n\nWhat issue or symptom are you experiencing with this vehicle?"
+                    )
+                    speech = f"Online visual search identified {detected_year} {detected_make} {detected_model}. What issue or symptom are you experiencing with this vehicle?"
+                    return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump(), "detection_meta": detection}
+
+                # 2. Make identified, ask for model and year
+                elif detected_make:
+                    dialogue.confirmed_make = detected_make
+                    dialogue.detected_make = detected_make
+                    dialogue.phase = "ASK_MODEL_YEAR"
+                    session.vehicle_profile.make = detected_make
+
+                    text = (
+                        f"Online visual search identified vehicle make: **{detected_make}** ({evidence}).\n\n"
+                        f"What **model** and **year** is your {detected_make}?"
+                    )
+                    speech = f"Online visual search identified vehicle make as {detected_make}. What model and year is your {detected_make}?"
+                    return text, speech, "ASK_MODEL_YEAR", {"make": detected_make, "detection_meta": detection}
+
+                # 3. Frame scanned but make inconclusive
+                else:
+                    dialogue.detected_make = None
+                    dialogue.phase = "CONFIRM_MAKE"
+                    text = (
+                        f"Visual frame scanned ({evidence}).\n\n"
+                        f"Vehicle emblem or model not distinctly identified. Please point camera at the front grille or badge — or tell me your vehicle's **make and model** (e.g. Toyota RAV4, Honda Civic, Ford F-150)."
+                    )
+                    speech = "Visual frame scanned. What is the make or brand of your vehicle?"
+                    return text, speech, "CONFIRM_MAKE", {"detected_make": None, "detection_meta": detection}
+
+            # Non-camera input without explicit make/model recognized
+            embedded_issue = extract_embedded_issue(input_clean)
+            if embedded_issue:
+                dialogue.reported_issue = embedded_issue
+            text = (
+                "To get started with guided diagnosis and repair, what is your vehicle's **make and model**? "
+                "(For example: **2023 Honda Civic**, **2022 Toyota RAV4**, or **Ford F-150**)."
             )
-            detected_make = detection.get("make")
-            detected_model = detection.get("model")
-            detected_year = detection.get("year") or 2022
-            evidence = detection.get("visual_evidence", "Online visual search identified vehicle profile")
-
-            # 1. Both Make & Model identified from camera image search
-            if detected_make and detected_model:
-                dialogue.confirmed_make = detected_make
-                dialogue.detected_make = detected_make
-                dialogue.model = detected_model
-                dialogue.year = detected_year
-                dialogue.phase = "ASK_ISSUE"
-
-                # Update session vehicle profile dynamically
-                session.vehicle_profile = create_dynamic_vehicle_profile(
-                    make=detected_make,
-                    model=detected_model,
-                    year=detected_year
-                )
-                session.procedure = create_dynamic_procedure(
-                    session.vehicle_profile,
-                    "General Inspection & Field Verification"
-                )
-
-                # Tailor initial component wireframes to vehicle
-                dynamic_comps = []
-                for c in RAV4_COMPONENTS:
-                    comp_copy = c.model_copy()
-                    if c.component_id == "air_cleaner_assembly":
-                        comp_copy.name = f"{detected_make} {detected_model} Engine Air Cleaner Housing"
-                        comp_copy.description = f"Houses the replaceable air filter element that cleans intake air for the {detected_make} {detected_model}."
-                    dynamic_comps.append(comp_copy)
-                session.observations = dynamic_comps
-
-                text = (
-                    f"Online visual search identified vehicle: **{detected_year} {detected_make} {detected_model}** "
-                    f"({evidence}).\n\nWhat issue or symptom are you experiencing with this vehicle?"
-                )
-                speech = f"Online visual search identified {detected_year} {detected_make} {detected_model}. What issue or symptom are you experiencing with this vehicle?"
-                return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump(), "detection_meta": detection}
-
-            # 2. Make identified, ask for model and year
-            elif detected_make:
-                dialogue.confirmed_make = detected_make
-                dialogue.detected_make = detected_make
-                dialogue.phase = "ASK_MODEL_YEAR"
-                session.vehicle_profile.make = detected_make
-
-                text = (
-                    f"Online visual search identified vehicle make: **{detected_make}** ({evidence}).\n\n"
-                    f"What **model** and **year** is your {detected_make}?"
-                )
-                speech = f"Online visual search identified vehicle make as {detected_make}. What model and year is your {detected_make}?"
-                return text, speech, "ASK_MODEL_YEAR", {"make": detected_make, "detection_meta": detection}
-
-            # 3. Frame scanned but make inconclusive
-            else:
-                dialogue.detected_make = None
-                dialogue.phase = "CONFIRM_MAKE"
-                text = (
-                    f"Visual frame scanned ({evidence}).\n\n"
-                    f"Vehicle emblem or model not distinctly identified. Please point camera at the front grille or badge — or tell me your vehicle's **make and model** (e.g. Toyota RAV4, BMW M4, Honda Civic)."
-                )
-                speech = "Visual frame scanned. What is the make or brand of your vehicle?"
-                return text, speech, "CONFIRM_MAKE", {"detected_make": None, "detection_meta": detection}
+            speech = "What is your vehicle's make and model?"
+            dialogue.phase = "CONFIRM_MAKE"
+            return text, speech, "CONFIRM_MAKE", {}
 
         # -------------------------------------------------------------
         # Phase 2: CONFIRM_MAKE (or Process Uploaded Image in this phase)
         # -------------------------------------------------------------
         if phase == "CONFIRM_MAKE":
-            if image_base64:
+            # If vehicle already has concrete make and model, do not prompt again
+            if dialogue.confirmed_make and dialogue.model and dialogue.model not in ["Standard", "Sedan", "Vehicle", "General Vehicle"]:
+                dialogue.phase = "ASK_ISSUE"
+                text = f"Inspecting **{dialogue.year or 2022} {dialogue.confirmed_make} {dialogue.model}**.\n\nWhat issue or symptom are you experiencing?"
+                speech = f"Inspecting {dialogue.year or 2022} {dialogue.confirmed_make} {dialogue.model}. What issue or symptom are you experiencing?"
+                return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
+
+            if image_base64 and any(cmd in input_lower for cmd in ["identify", "camera", "image", "scan", "photo", "shutter"]):
                 from app.services.meta_muse import MetaMuseService
                 detection = await MetaMuseService.detect_vehicle_make_model(image_base64=image_base64)
                 det_make = detection.get("make")
@@ -415,15 +513,40 @@ class ConversationalAgentService:
                     speech = f"Identified {det_year} {det_make} {det_model} from visual search. What issue or symptom are you experiencing?"
                     return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump(), "detection_meta": detection}
 
+            # If user entered both model and make or model was recognized
+            if extracted_model:
+                make = extracted_make or dialogue.confirmed_make or dialogue.detected_make or "Vehicle"
+                dialogue.confirmed_make = make
+                dialogue.model = extracted_model
+                dialogue.year = extracted_year or dialogue.year or 2022
+                dialogue.phase = "ASK_ISSUE"
+                session.vehicle_profile = create_dynamic_vehicle_profile(
+                    make=make,
+                    model=extracted_model,
+                    year=dialogue.year
+                )
+                session.procedure = create_dynamic_procedure(
+                    session.vehicle_profile,
+                    "General Inspection & Field Verification"
+                )
+                text = f"Confirmed: **{dialogue.year} {make} {extracted_model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
+                speech = f"Confirmed: {dialogue.year} {make} {extracted_model}. What issue or symptom are you experiencing?"
+                return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
+
             if any(w in input_lower for w in ["yes", "yeah", "yep", "correct", "right", "confirm", "true"]):
                 make = dialogue.detected_make or extracted_make or "Vehicle"
                 dialogue.confirmed_make = make
+                if dialogue.model and dialogue.model not in ["Standard", "Sedan", "Vehicle"]:
+                    dialogue.phase = "ASK_ISSUE"
+                    text = f"Confirmed: **{dialogue.year or 2022} {make} {dialogue.model}**.\n\nWhat issue or symptom are you experiencing?"
+                    speech = f"Confirmed: {dialogue.year or 2022} {make} {dialogue.model}. What issue or symptom are you experiencing?"
+                    return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
                 dialogue.phase = "ASK_MODEL_YEAR"
                 text = f"Great! What **model** and **year** is your {make}?"
                 speech = f"Great! What model and year is your {make}?"
                 return text, speech, "ASK_MODEL_YEAR", {"confirmed_make": make}
             else:
-                # Check if this input was an automated camera command
+                # User provided a make name or new text
                 is_camera_cmd = any(cmd in input_lower for cmd in ["identify", "camera", "image", "scan", "photo", "shutter", "frame"])
                 if is_camera_cmd:
                     new_make = extracted_make or dialogue.detected_make or "Vehicle"
@@ -443,14 +566,18 @@ class ConversationalAgentService:
         # -------------------------------------------------------------
         if phase == "ASK_MODEL_YEAR":
             year_match = re.search(r"\b(19[89]\d|20[0-2]\d)\b", input_clean)
-            year = int(year_match.group(1)) if year_match else (dialogue.year or 2022)
+            year = int(year_match.group(1)) if year_match else (dialogue.year or extracted_year or 2022)
 
-            make = dialogue.confirmed_make or "Vehicle"
+            make = extracted_make or dialogue.confirmed_make or session.vehicle_profile.make or "Vehicle"
+            if make == "generic_vehicle":
+                make = "Vehicle"
+
             # Strip out year and common filler words to find model
             clean_for_model = re.sub(r"\b(19[89]\d|20[0-2]\d)\b", "", input_clean)
-            clean_for_model = re.sub(rf"\b({make}|it's|is|a|the|my)\b", "", clean_for_model, flags=re.IGNORECASE).strip()
+            clean_for_model = re.sub(rf"\b({re.escape(make)}|it's|is|a|an|the|my|car|vehicle)\b", "", clean_for_model, flags=re.IGNORECASE).strip()
             model = extracted_model or clean_for_model.title() or "Sedan"
 
+            dialogue.confirmed_make = make
             dialogue.model = model
             dialogue.year = year
             dialogue.phase = "ASK_ISSUE"
@@ -465,9 +592,16 @@ class ConversationalAgentService:
                 "General Inspection & Field Verification"
             )
 
-            text = f"Confirmed: **{year} {make} {model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
-            speech = f"Confirmed: {year} {make} {model}. What issue or symptom are you experiencing with this vehicle?"
-            return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
+            # Check if user also provided an issue
+            embedded_issue = extract_embedded_issue(input_clean)
+            if embedded_issue:
+                dialogue.reported_issue = embedded_issue
+                phase = "ASK_ISSUE"
+                user_input = embedded_issue
+            else:
+                text = f"Confirmed: **{year} {make} {model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
+                speech = f"Confirmed: {year} {make} {model}. What issue or symptom are you experiencing with this vehicle?"
+                return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
 
         # -------------------------------------------------------------
         # Phase 4: ASK_ISSUE -> Search Solution & Plan Guided Steps

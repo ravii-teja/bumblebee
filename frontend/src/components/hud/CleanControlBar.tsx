@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { Camera, Mic, MicOff, MessageSquare, Send, X, Image as ImageIcon } from "lucide-react";
+import React, { useState } from "react";
+import { Camera, Mic, MicOff, MessageSquare, Send, X } from "lucide-react";
 
 interface CleanControlBarProps {
   isListening: boolean;
   onToggleVoice: () => void;
   onCaptureCamera: () => void;
   onSendChat: (text: string) => void;
-  onUploadImage?: (base64: string) => void;
   isProcessing: boolean;
   onOpenChat?: () => void;
   isChatOpen?: boolean;
@@ -19,33 +18,18 @@ export function CleanControlBar({
   onToggleVoice,
   onCaptureCamera,
   onSendChat,
-  onUploadImage,
   isProcessing,
   onOpenChat,
   isChatOpen = false
 }: CleanControlBarProps) {
   const [showChatInput, setShowChatInput] = useState(false);
   const [chatText, setChatText] = useState("");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleChatButtonClick = () => {
     if (onOpenChat) {
       onOpenChat();
     } else {
       setShowChatInput((prev) => !prev);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && onUploadImage) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.includes(",") ? result.split(",")[1] : result;
-        onUploadImage(base64);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -138,7 +122,7 @@ export function CleanControlBar({
         </form>
       )}
 
-      {/* The 4 Core Actions: Chat, Upload Image, Camera Shutter, Mic */}
+      {/* Core Actions: Chat, Camera Shutter, Voice Orb */}
       <div
         className="glass-panel"
         style={{
@@ -151,15 +135,6 @@ export function CleanControlBar({
           pointerEvents: "auto"
         }}
       >
-        {/* Hidden File Input for Image Upload */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={handleFileChange}
-        />
-
         {/* 1. Chat Option */}
         <button
           id="btn-chat-mode"
@@ -183,29 +158,7 @@ export function CleanControlBar({
           <MessageSquare size={19} />
         </button>
 
-        {/* 2. Upload Image Option */}
-        <button
-          id="btn-upload-image"
-          onClick={() => fileInputRef.current?.click()}
-          title="Upload vehicle or engine image"
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "var(--bg-surface-2)",
-            color: "var(--text-secondary)",
-            border: "1px solid var(--border-subtle)",
-            cursor: "pointer",
-            transition: "var(--transition-fast)"
-          }}
-        >
-          <ImageIcon size={19} />
-        </button>
-
-        {/* 3. Primary Bumblebee Camera Shutter / Scan Button */}
+        {/* 2. Primary Bumblebee Camera Shutter / Scan Button */}
         <button
           id="btn-camera-capture"
           onClick={onCaptureCamera}

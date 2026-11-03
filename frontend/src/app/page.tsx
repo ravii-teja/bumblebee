@@ -172,7 +172,7 @@ export default function BumblebeeChamber() {
       }
 
       try {
-        const imgFrame = customImageBase64 || captureFrame() || undefined;
+        const imgFrame = customImageBase64 || undefined;
         let speechPlayed = false;
 
         const res = await streamConversationTurn(
@@ -210,25 +210,12 @@ export default function BumblebeeChamber() {
         setIsProcessing(false);
       }
     },
-    [session, isProcessing, captureFrame, speakText]
+    [session, isProcessing, speakText]
   );
 
   useEffect(() => {
     handleTurnRef.current = handleTurn;
   }, [handleTurn]);
-
-  const handleUploadImage = useCallback(
-    async (base64: string) => {
-      if (phase === "SCAN_VEHICLE") {
-        await handleTurn("identify vehicle from uploaded photo", base64);
-      } else if (phase === "ASK_ISSUE") {
-        await handleTurn("diagnose issue from uploaded component photo", base64);
-      } else {
-        await handleTurn("verify state from uploaded inspection photo", base64);
-      }
-    },
-    [phase, handleTurn]
-  );
 
   // Initialize Session quietly without injecting hardcoded dialogue
   useEffect(() => {
@@ -252,12 +239,13 @@ export default function BumblebeeChamber() {
   // Camera Shutter Click
   const handleCameraScan = async () => {
     const frame = captureFrame();
-    if (phase === "SCAN_VEHICLE") {
+    const hasVehicle = session?.vehicle_profile?.make && session.vehicle_profile.make !== "generic_vehicle";
+    if (phase === "SCAN_VEHICLE" && !hasVehicle) {
       await handleTurn("identify vehicle from camera image", frame || undefined);
     } else if (phase === "ACTIVE_REPAIR") {
       await handleVerifyStep();
     } else {
-      await handleTurn("scan frame", frame || undefined);
+      await handleTurn("diagnose issue from camera image", frame || undefined);
     }
   };
 
@@ -783,13 +771,12 @@ export default function BumblebeeChamber() {
         </div>
       )}
 
-      {/* 6. Clean Floating Control Bar (Chat Option, Image Upload, Camera Shutter, Voice Mic) */}
+      {/* 6. Clean Floating Control Bar (Chat, Camera Shutter, Voice Orb) */}
       <CleanControlBar
         isListening={isVoiceActive || isListening}
         onToggleVoice={handleToggleVoice}
         onCaptureCamera={handleCameraScan}
         onSendChat={(text) => handleTurn(text)}
-        onUploadImage={handleUploadImage}
         isProcessing={isProcessing}
         onOpenChat={() => setActiveModal(activeModal === "chat" ? "none" : "chat")}
         isChatOpen={activeModal === "chat"}

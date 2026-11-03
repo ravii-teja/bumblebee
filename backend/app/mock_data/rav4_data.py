@@ -395,6 +395,8 @@ def create_dynamic_vehicle_profile(make: str, model: str, year: int) -> VehicleP
     if make_clean.upper() in ["BMW", "GMC", "VW"]:
         make_clean = make_clean.upper()
     model_clean = model.strip().title()
+    if model.strip().upper() in ["RAV4", "CR-V", "HR-V", "F-150", "F-250", "F-350", "CX-5", "CX-30", "CX-50", "CX-90", "RX", "NX", "ES", "IS", "GX", "LX", "XC40", "XC60", "XC90", "EV6", "EV9"]:
+        model_clean = model.strip().upper()
     return VehicleProfile(
         id=f"{make_clean.lower()}_{model_clean.lower()}_{year}",
         make=make_clean,
