@@ -237,8 +237,10 @@ class SessionRepository:
         feedback: Optional[str] = None
     ):
         """Records or updates problem resolution metrics for continuous product improvement."""
-        if hypothesis and hasattr(hypothesis, "title"):
-            hypothesis = hypothesis.title
+        if callable(hypothesis):
+            hypothesis = None
+        elif hypothesis and hasattr(hypothesis, "hypothesis_title"):
+            hypothesis = str(hypothesis.hypothesis_title)
         elif hypothesis and not isinstance(hypothesis, str):
             hypothesis = str(hypothesis)
 

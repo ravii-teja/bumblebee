@@ -254,6 +254,97 @@ def test_point_and_click_vehicle_search_and_recreation():
     assert issue_data["session"]["dialogue"]["hypothesis"] is not None
 
 
+def test_chat_add_and_switch_vehicle_by_name():
+    """Verifies that users can add and switch vehicles by make, model, and year directly in chat."""
+    init_res = client.post("/api/v1/sessions", json={
+        "vehicle_id": "generic_vehicle",
+        "procedure_id": "general_inspection"
+    })
+    session_id = init_res.json()["session_id"]
+
+    # 1. Add car via text: "Add 2023 Honda Civic"
+    turn1 = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "Add 2023 Honda Civic"
+    })
+    assert turn1.status_code == 200
+    d1 = turn1.json()
+    assert d1["phase"] == "ASK_ISSUE"
+    assert "Honda" in d1["text"]
+    assert "Civic" in d1["text"]
+    assert d1["session"]["vehicle_profile"]["make"] == "Honda"
+    assert d1["session"]["vehicle_profile"]["model"] == "Civic"
+    assert d1["session"]["vehicle_profile"]["year"] == 2023
+
+    # 2. Switch car via text: "Switch car to 2021 Ford F-150"
+    turn2 = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "Switch car to 2021 Ford F-150"
+    })
+    assert turn2.status_code == 200
+    d2 = turn2.json()
+    assert d2["phase"] == "ASK_ISSUE"
+    assert d2["session"]["vehicle_profile"]["make"] == "Ford"
+    assert d2["session"]["vehicle_profile"]["model"] == "F-150"
+    assert d2["session"]["vehicle_profile"]["year"] == 2021
+
+
+def test_chat_diagnose_and_talk_about_issues():
+    """Verifies that users can talk/chat with the model on vehicle issues and DTC codes."""
+    init_res = client.post("/api/v1/sessions", json={
+        "vehicle_id": "generic_vehicle",
+        "procedure_id": "general_inspection"
+    })
+    session_id = init_res.json()["session_id"]
+
+    # Set vehicle
+    client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "I drive a 2022 Toyota RAV4"
+    })
+
+    # Chat asking about DTC P0171
+    dtc_turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "What does code P0171 mean?"
+    })
+    assert dtc_turn.status_code == 200
+    dtc_data = dtc_turn.json()
+    assert "P0171" in dtc_data["text"] or "lean" in dtc_data["text"].lower()
+
+    # Chat asking about symptom: "Engine vibrating and rough idle"
+    issue_turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "Engine vibrating and rough idle when stopped"
+    })
+    assert issue_turn.status_code == 200
+    issue_data = issue_turn.json()
+    assert issue_data["phase"] == "ACTIVE_REPAIR"
+    assert "Step 1" in issue_data["text"]
+    assert len(issue_data["session"]["procedure"]["steps"]) >= 4
+
+
+def test_chat_combined_vehicle_and_issue_one_turn():
+    """Verifies that specifying a vehicle and issue together in one message configures both immediately."""
+    init_res = client.post("/api/v1/sessions", json={
+        "vehicle_id": "generic_vehicle",
+        "procedure_id": "general_inspection"
+    })
+    session_id = init_res.json()["session_id"]
+
+    turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "Add 2024 BMW 3 Series with squeaking brakes"
+    })
+    assert turn.status_code == 200
+    data = turn.json()
+    assert data["session"]["vehicle_profile"]["make"] == "BMW"
+    assert "3 Series" in data["session"]["vehicle_profile"]["model"]
+    assert data["phase"] == "ACTIVE_REPAIR"
+    assert "Step 1" in data["text"]
+
+
+
 
 
 

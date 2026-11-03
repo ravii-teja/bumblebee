@@ -17,7 +17,7 @@ META_API_KEY = (
     or "LLM_1150423010998636_cojkhUtvkYeNsqIeq67Dn0PbhwY"
 )
 META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.meta.ai/v1/chat/completions")
-META_MODEL_NAME = os.getenv("META_MODEL_NAME", "muse-wonder-1.0")
+META_MODEL_NAME = os.getenv("META_MODEL_NAME", "muse-spark-1.3")
 
 
 class SolutionSearchService:

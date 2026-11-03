@@ -12,6 +12,8 @@ interface CleanControlBarProps {
   isProcessing: boolean;
   isObdConnected?: boolean;
   onToggleObd?: () => void;
+  onOpenChat?: () => void;
+  isChatOpen?: boolean;
 }
 
 export function CleanControlBar({
@@ -22,11 +24,21 @@ export function CleanControlBar({
   onUploadImage,
   isProcessing,
   isObdConnected = false,
-  onToggleObd
+  onToggleObd,
+  onOpenChat,
+  isChatOpen = false
 }: CleanControlBarProps) {
   const [showChatInput, setShowChatInput] = useState(false);
   const [chatText, setChatText] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleChatButtonClick = () => {
+    if (onOpenChat) {
+      onOpenChat();
+    } else {
+      setShowChatInput((prev) => !prev);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,8 +192,8 @@ export function CleanControlBar({
         {/* 1. Chat Option */}
         <button
           id="btn-chat-mode"
-          onClick={() => setShowChatInput((prev) => !prev)}
-          title="Type message / issue"
+          onClick={handleChatButtonClick}
+          title={isChatOpen ? "Close Chat & Diagnostics" : "Open Chat & Diagnostics"}
           style={{
             width: 44,
             height: 44,
@@ -189,11 +201,12 @@ export function CleanControlBar({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: showChatInput ? "rgba(250, 204, 21, 0.2)" : "var(--bg-surface-2)",
-            color: showChatInput ? "var(--bumblebee-yellow)" : "var(--text-secondary)",
-            border: showChatInput ? "1px solid var(--bumblebee-yellow)" : "1px solid var(--border-subtle)",
+            background: showChatInput || isChatOpen ? "rgba(250, 204, 21, 0.2)" : "var(--bg-surface-2)",
+            color: showChatInput || isChatOpen ? "var(--bumblebee-yellow)" : "var(--text-secondary)",
+            border: showChatInput || isChatOpen ? "1px solid var(--bumblebee-yellow)" : "1px solid var(--border-subtle)",
             cursor: "pointer",
-            transition: "var(--transition-fast)"
+            transition: "var(--transition-fast)",
+            boxShadow: showChatInput || isChatOpen ? "0 0 12px rgba(250, 204, 21, 0.4)" : "none"
           }}
         >
           <MessageSquare size={19} />

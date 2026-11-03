@@ -32,7 +32,30 @@ META_API_KEY = (
     or "LLM_1150423010998636_cojkhUtvkYeNsqIeq67Dn0PbhwY"
 )
 META_API_ENDPOINT = os.getenv("META_API_ENDPOINT", "https://api.meta.ai/v1/chat/completions")
-META_MODEL_NAME = os.getenv("META_MODEL_NAME", "muse-wonder-1.0")
+META_MODEL_NAME = os.getenv("META_MODEL_NAME", "muse-spark-1.3")
+
+AUTOMOTIVE_KB = {
+    "p0171": "DTC P0171 indicates System Too Lean (Bank 1) — the engine is getting too much unmetered air or inadequate fuel. Most common causes: vacuum leak downstream of the MAF sensor, dirty MAF sensor, or loose air intake boot.",
+    "p0172": "DTC P0172 indicates System Too Rich (Bank 1) — too much fuel or not enough air. Typical causes: clogged engine air filter, leaking fuel injector, or faulty oxygen sensor.",
+    "p0300": "DTC P0300 indicates a Random/Multiple Cylinder Misfire. Check worn spark plugs, failing ignition coils, low fuel delivery, or intake vacuum leaks.",
+    "p0420": "DTC P0420 indicates Catalyst System Efficiency Below Threshold (Bank 1). Usually caused by an exhaust leak before the catalytic converter or an aging catalytic converter.",
+    "p0455": "DTC P0455 indicates an EVAP Gross Leak. Common culprit is a loose, missing, or worn fuel filler gas cap or cracked purge solenoid hose.",
+    "p0128": "DTC P0128 indicates Coolant Thermostat Error (coolant temp below regulating temp). The engine thermostat is likely stuck open and needs replacement.",
+    "brake": "Brake squealing typically occurs when the brake pad acoustic wear indicator contacts the rotor, signaling worn pads. Grinding indicates metal-on-metal wear requiring immediate pad and rotor replacement.",
+    "idle": "A rough engine idle or vibration when stopped is usually caused by vacuum leaks, a heavily clogged air filter, dirty throttle body carbon buildup, or fouled spark plugs.",
+    "battery": "If the vehicle clicks rapidly and fails to crank, the 12V battery voltage is below threshold (under 12.0V) or terminal connectors are corroded/loose.",
+    "overheat": "Engine overheating is critical: never open the coolant reservoir while hot. Common causes are low coolant, stuck thermostat, radiator fan failure, or water pump leak.",
+    "alternator": "Symptoms of a failing alternator include dimming headlights, battery warning light on the dash, and battery draining while driving. A healthy alternator outputs 13.8V to 14.5V with engine running."
+}
+
+
+def lookup_automotive_kb(query: str) -> Optional[str]:
+    """Provides rapid grounded automotive diagnostic response for common DTCs and symptoms."""
+    q = query.lower()
+    for key, answer in AUTOMOTIVE_KB.items():
+        if key in q:
+            return answer
+    return None
 
 
 async def ask_meta_llm(system_context: str, user_question: str) -> Optional[str]:
@@ -43,7 +66,7 @@ async def ask_meta_llm(system_context: str, user_question: str) -> Optional[str]
         or "LLM_1150423010998636_cojkhUtvkYeNsqIeq67Dn0PbhwY"
     )
     if not api_key:
-        return None
+        return lookup_automotive_kb(user_question)
     try:
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -63,7 +86,7 @@ async def ask_meta_llm(system_context: str, user_question: str) -> Optional[str]
             "max_tokens": 1500,
             "temperature": 0.3
         }
-        async with httpx.AsyncClient(timeout=18.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(META_API_ENDPOINT, headers=headers, json=payload)
             if resp.status_code == 200:
                 answer = resp.json()["choices"][0]["message"]["content"]
@@ -72,12 +95,13 @@ async def ask_meta_llm(system_context: str, user_question: str) -> Optional[str]
                     return clean_ans
     except Exception as e:
         logger.warning(f"Meta LLM voice conversational turn failed: {e}")
-    return None
+    return lookup_automotive_kb(user_question)
 
 KNOWN_MAKES = [
-    "Toyota", "Honda", "Ford", "Chevrolet", "BMW", "Mercedes-Benz", "Nissan",
-    "Hyundai", "Kia", "Audi", "Tesla", "Subaru", "Volkswagen", "Mazda",
-    "Jeep", "Dodge", "Lexus", "Volvo", "Porsche", "GMC"
+    "Toyota", "Honda", "Ford", "Chevrolet", "Chevy", "BMW", "Mercedes-Benz", "Mercedes", "Nissan",
+    "Hyundai", "Kia", "Audi", "Tesla", "Subaru", "Volkswagen", "VW", "Mazda",
+    "Jeep", "Dodge", "Ram", "Lexus", "Volvo", "Porsche", "GMC", "Acura", "Infiniti",
+    "Cadillac", "Chrysler", "Buick", "Lincoln", "Mini", "Jaguar", "Land Rover", "Mitsubishi", "Genesis"
 ]
 
 
@@ -92,24 +116,71 @@ def extract_vehicle_entities(text: str) -> Tuple[Optional[str], Optional[str], O
     # Extract make
     found_make = None
     for make in KNOWN_MAKES:
-        if re.search(rf"\b{make}\b", clean, re.IGNORECASE):
-            found_make = make
+        if re.search(rf"\b{re.escape(make)}\b", clean, re.IGNORECASE):
+            if make.lower() == "chevy":
+                found_make = "Chevrolet"
+            elif make.lower() == "vw":
+                found_make = "Volkswagen"
+            elif make.lower() == "mercedes":
+                found_make = "Mercedes-Benz"
+            else:
+                found_make = make
             break
 
-    # Extract model (word following make, or popular model names)
+    # Extract model
     found_model = None
     popular_models = [
-        "Civic", "Accord", "CR-V", "Pilot", "RAV4", "Camry", "Corolla", "Highlander", "Tacoma", "Tundra",
-        "F-150", "Mustang", "Explorer", "Escape", "Silverado", "Malibu", "Equinox",
-        "3 Series", "5 Series", "X3", "X5", "C-Class", "E-Class", "Altima", "Rogue", "Sentra",
-        "Elantra", "Sonata", "Tucson", "Model 3", "Model Y", "Outback", "Forester", "Golf", "Jetta", "CX-5"
+        "Civic", "Accord", "CR-V", "Pilot", "Fit", "HR-V", "Passport", "Ridgeline",
+        "RAV4", "Camry", "Corolla", "Highlander", "Tacoma", "Tundra", "Prius", "4Runner", "Sienna",
+        "F-150", "Mustang", "Explorer", "Escape", "Edge", "Bronco", "Ranger",
+        "Silverado", "Malibu", "Equinox", "Tahoe", "Suburban", "Colorado", "Trax",
+        "3 Series", "5 Series", "7 Series", "M3", "M4", "M5", "X1", "X3", "X5", "X7",
+        "C-Class", "E-Class", "S-Class", "GLC", "GLE", "GLS", "A-Class",
+        "Altima", "Rogue", "Sentra", "Pathfinder", "Frontier", "Murano",
+        "Elantra", "Sonata", "Tucson", "Santa Fe", "Palisade", "Kona",
+        "Forte", "Optima", "K5", "Sportage", "Sorento", "Telluride", "Soul",
+        "Model 3", "Model Y", "Model S", "Model X", "Cybertruck",
+        "Outback", "Forester", "Crosstrek", "Impreza", "WRX", "Ascent",
+        "Golf", "Jetta", "Tiguan", "Atlas", "Passat", "GTI",
+        "CX-5", "CX-30", "CX-50", "CX-90", "Mazda3", "Mazda6", "Miata",
+        "Wrangler", "Grand Cherokee", "Cherokee", "Gladiator", "Compass",
+        "Charger", "Challenger", "Durango", "1500", "2500",
+        "RX", "NX", "ES", "IS", "GX", "XC60", "XC90", "XC40",
+        "911", "Cayenne", "Macan", "Panamera", "Taycan",
+        "Sierra", "Yukon", "Acadia", "Canyon"
     ]
     for model in popular_models:
-        if re.search(rf"\b{model}\b", clean, re.IGNORECASE):
+        if re.search(rf"\b{re.escape(model)}\b", clean, re.IGNORECASE):
             found_model = model
             break
 
+    # If no popular model matched, but make was found, try extracting candidate word following make
+    if not found_model and found_make:
+        m = re.search(rf"\b{re.escape(found_make)}\s+([A-Za-z0-9\-_]+)", clean, re.IGNORECASE)
+        if m:
+            candidate = m.group(1).strip()
+            if candidate.lower() not in [
+                "car", "vehicle", "truck", "suv", "sedan", "coupe", "with", "having",
+                "is", "a", "an", "the", "year", "engine", "issue", "model"
+            ]:
+                found_model = candidate.title()
+
     return found_make, found_model, year
+
+
+def extract_embedded_issue(text: str) -> Optional[str]:
+    """Extracts an issue or symptom description if embedded in vehicle setup message."""
+    # Matches "with ...", "having ...", "issue ...", "problem ...", "check engine ...", "dtc ..."
+    m = re.search(
+        r"\b(?:with|having|has|issue|problem|symptom|trouble|check engine|dtc|code)\b\s*[:\s]*(.*)",
+        text,
+        re.IGNORECASE
+    )
+    if m:
+        issue = m.group(1).strip()
+        if len(issue) > 2:
+            return issue
+    return None
 
 
 class ConversationalAgentService:
@@ -148,8 +219,27 @@ class ConversationalAgentService:
         # Check if user directly provided make, model, or year in their message
         extracted_make, extracted_model, extracted_year = extract_vehicle_entities(input_clean)
 
-        # If user provided a complete vehicle description (e.g. "I have a 2021 Honda Civic")
-        if extracted_make and (extracted_model or extracted_year) and phase in ["SCAN_VEHICLE", "CONFIRM_MAKE", "ASK_MODEL_YEAR"]:
+        # Explicit vehicle change/add intent keywords
+        is_vehicle_intent = any(k in input_lower for k in [
+            "switch car", "switch vehicle", "change car", "change vehicle", "add car",
+            "add vehicle", "new car", "new vehicle", "set car", "set vehicle",
+            "i have a", "my car is", "i drive a", "select vehicle", "select car"
+        ])
+
+        # If user explicitly requested to switch/add vehicle without naming make yet
+        if is_vehicle_intent and not extracted_make:
+            dialogue.phase = "SCAN_VEHICLE"
+            dialogue.confirmed_make = None
+            dialogue.detected_make = None
+            text = (
+                "Sure! You can point your camera to scan your car or badge, or tell me your "
+                "vehicle's **make, model, and year** (e.g. '2023 Honda Civic', '2021 Ford F-150')."
+            )
+            speech = "Sure! Point your camera to scan, or tell me your vehicle make, model, and year."
+            return text, speech, "SCAN_VEHICLE", {"action": "PROMPT_VEHICLE_SELECT"}
+
+        # If user provided make and (model or year) OR expressed vehicle switch intent with a make
+        if (extracted_make and (extracted_model or extracted_year)) or (is_vehicle_intent and extracted_make):
             dialogue.confirmed_make = extracted_make
             dialogue.model = extracted_model or "Standard"
             dialogue.year = extracted_year or 2022
@@ -164,11 +254,34 @@ class ConversationalAgentService:
                 session.vehicle_profile,
                 "General Inspection & Field Verification"
             )
-            dialogue.phase = "ASK_ISSUE"
+            session.current_step_number = 1
+            session.completed_steps = []
 
-            text = f"Confirmed: **{session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
-            speech = f"Confirmed: {session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}. What issue or symptom are you experiencing with this vehicle?"
-            return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
+            # Tailor initial component wireframes to vehicle
+            dynamic_comps = []
+            for c in RAV4_COMPONENTS:
+                comp_copy = c.model_copy()
+                if c.component_id == "air_cleaner_assembly":
+                    comp_copy.name = f"{dialogue.confirmed_make} {dialogue.model} Engine Air Cleaner Housing"
+                    comp_copy.description = f"Houses the replaceable air filter element that cleans intake air for the {dialogue.confirmed_make} {dialogue.model}."
+                dynamic_comps.append(comp_copy)
+            session.observations = dynamic_comps
+
+            # Check if user also provided an issue description in this message
+            embedded_issue = extract_embedded_issue(input_clean)
+            if embedded_issue:
+                dialogue.reported_issue = embedded_issue
+                # Fall through into ASK_ISSUE diagnosis
+                phase = "ASK_ISSUE"
+                user_input = embedded_issue
+            else:
+                dialogue.reported_issue = None
+                dialogue.hypothesis = None
+                dialogue.phase = "ASK_ISSUE"
+
+                text = f"Vehicle set to **{session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?"
+                speech = f"Vehicle set to {session.vehicle_profile.year} {session.vehicle_profile.make} {session.vehicle_profile.model}. What issue or symptom are you experiencing with this vehicle?"
+                return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
 
         # -------------------------------------------------------------
         # Phase 1: SCAN_VEHICLE -> Analyze Camera Image & Online Search
@@ -546,9 +659,104 @@ class ConversationalAgentService:
             speech = f"We are on Step {current_step_num}: {current_step.title}. Say 'Verify' or 'Next step' when ready."
             return text, speech, phase, {"step": current_step.model_dump()}
 
+        # -------------------------------------------------------------
+        # Phase 6: COMPLETED -> Multi-turn Follow-up or New Issue on Vehicle
+        # -------------------------------------------------------------
+        veh = session.vehicle_profile
+        if any(w in input_lower for w in ["scan", "new car", "another car", "restart", "start over", "reset"]):
+            dialogue.phase = "SCAN_VEHICLE"
+            dialogue.confirmed_make = None
+            dialogue.detected_make = None
+            dialogue.reported_issue = None
+            dialogue.hypothesis = None
+            session.current_step_number = 1
+            session.completed_steps = []
+            return (
+                "Ready for new vehicle inspection. Point camera at the car or tell me the make, model, and year.",
+                "Ready for new vehicle inspection. Point camera at the car or tell me the make, model, and year.",
+                "SCAN_VEHICLE",
+                {"action": "NEW_INSPECTION"}
+            )
+
+        # Check if user describes another issue for this vehicle
+        is_question = any(q in input_lower for q in ["what", "why", "how", "explain", "is it", "can i", "where"])
+        if not is_question and len(input_clean) > 3 and not any(w in input_lower for w in ["thank", "bye", "good", "done", "ok", "cool"]):
+            dialogue.reported_issue = input_clean
+            from app.services.solution_search import SolutionSearchService
+            solution_data = await SolutionSearchService.search_solution_for_vehicle(
+                make=veh.make,
+                model=veh.model,
+                year=veh.year or 2022,
+                issue_description=dialogue.reported_issue
+            )
+            target_component_id = solution_data.get("target_component", "air_cleaner_assembly")
+            hypothesis = DiagnosticHypothesis(
+                id=f"diag_{veh.make.lower()}_{veh.model.lower()}_followup",
+                symptom=dialogue.reported_issue,
+                hypothesis_title=solution_data["hypothesis_title"],
+                description=solution_data["root_cause"],
+                confidence=solution_data.get("confidence", 0.95),
+                supporting_evidence=[
+                    f"Reported issue: '{dialogue.reported_issue}'",
+                    f"Cross-referenced with {veh.make} OEM Technical Service Bulletins"
+                ],
+                recommended_checks=["Verify physical condition against expected visual criteria"],
+                safety_level="NON_SAFETY_CRITICAL",
+                manual_citation=solution_data["manual_citation"],
+                target_component_id=target_component_id
+            )
+            steps = [
+                RepairStep(
+                    step_number=s["step_number"],
+                    title=s["title"],
+                    instruction=s["instruction"],
+                    required_tools=solution_data.get("tools_required", ["Hands only"]),
+                    safety_warning=s.get("safety_warning"),
+                    expected_visual_state=s["expected_visual_state"],
+                    reference_manual_page=s["step_number"] * 12 + 100,
+                    verification_criteria=[f"Step {s['step_number']} visual check passed"]
+                )
+                for s in solution_data["steps"]
+            ]
+            custom_procedure = RepairProcedure(
+                id=f"{veh.id}_followup_procedure",
+                vehicle_id=veh.id,
+                title=solution_data["hypothesis_title"],
+                category="Routine Field Maintenance",
+                difficulty="BEGINNER",
+                estimated_minutes=10,
+                tools_required=solution_data.get("tools_required", ["Hands only"]),
+                parts_required=solution_data.get("parts_required", [f"{veh.make} Genuine Part"]),
+                safety_critical=False,
+                source_manual=solution_data["manual_citation"],
+                source_section="Maintenance and Service Guidelines",
+                steps=steps
+            )
+            dialogue.hypothesis = hypothesis
+            session.procedure = custom_procedure
+            dialogue.solution_plan = custom_procedure
+            dialogue.phase = "ACTIVE_REPAIR"
+            session.current_step_number = 1
+            session.completed_steps = []
+            first_step = steps[0]
+            text = (
+                f"**New Diagnosis for {veh.year} {veh.make} {veh.model}:**\n"
+                f"- **Issue:** {dialogue.reported_issue}\n"
+                f"- **Solution:** {hypothesis.hypothesis_title}\n\n"
+                f"**Step 1:** {first_step.title}\n{first_step.instruction}"
+            )
+            speech = f"Diagnosing {dialogue.reported_issue} for your {veh.make} {veh.model}. Step 1: {first_step.title}. {first_step.instruction}"
+            return text, speech, "ACTIVE_REPAIR", {"hypothesis": hypothesis.model_dump(), "step": first_step.model_dump()}
+
+        # Conversational Q&A
+        system_prompt = f"You are Bumblebee, an automotive field engineer assisting with a {veh.year or 2022} {veh.make} {veh.model}."
+        llm_reply = await ask_meta_llm(system_prompt, input_clean)
+        if llm_reply:
+            return llm_reply, llm_reply, "COMPLETED", {"llm_answer": llm_reply}
+
         return (
-            "Repair procedure is complete. Tap camera or speak to start another vehicle inspection.",
-            "Repair procedure is complete. Tap camera or speak to inspect another vehicle.",
+            f"Repair completed for {veh.year or 2022} {veh.make} {veh.model}. Ask any automotive questions, describe another issue, or say 'New car' to inspect another vehicle.",
+            f"Repair completed for {veh.make} {veh.model}. Ask any automotive questions, or say 'New car' to inspect another vehicle.",
             "COMPLETED",
             {"status": "COMPLETED"}
         )

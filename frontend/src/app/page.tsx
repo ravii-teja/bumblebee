@@ -14,14 +14,15 @@ import { VerificationBanner } from "@/components/hud/VerificationBanner";
 import { PartsDrawer } from "@/components/parts/PartsDrawer";
 import { EvidenceModal } from "@/components/evidence/EvidenceModal";
 import { SessionAuditModal } from "@/components/evidence/SessionAuditModal";
+import { ChatDrawer } from "@/components/hud/ChatDrawer";
 import { BumblebeeBrandBadge } from "@/components/hud/BumblebeeBrandBadge";
-import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera, Activity } from "lucide-react";
+import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera, Activity, MessageSquare } from "lucide-react";
 
 export default function BumblebeeChamber() {
   const [session, setSession] = useState<RepairSession>(FALLBACK_SESSION);
   const [components, setComponents] = useState<ComponentObservation[]>([]);
   const [selectedComponent, setSelectedComponent] = useState<ComponentObservation | null>(null);
-  const [activeModal, setActiveModal] = useState<"none" | "parts" | "manual" | "summary">("none");
+  const [activeModal, setActiveModal] = useState<"none" | "parts" | "manual" | "summary" | "chat">("none");
   const [isVerifying, setIsVerifying] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [latestVerification, setLatestVerification] = useState<VerificationResult | null>(null);
@@ -439,6 +440,44 @@ export default function BumblebeeChamber() {
             <span className="hide-on-mobile">Manual</span>
           </button>
 
+          {/* Chat & Issue Diagnostics */}
+          <button
+            onClick={() => setActiveModal(activeModal === "chat" ? "none" : "chat")}
+            className="glass-panel"
+            title="Chat, Issues & Vehicle Switcher"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "7px 14px",
+              borderRadius: "var(--radius-pill)",
+              background: activeModal === "chat" ? "rgba(250, 204, 21, 0.25)" : "var(--bg-surface-2)",
+              color: activeModal === "chat" ? "var(--bumblebee-yellow)" : "var(--text-secondary)",
+              border: activeModal === "chat" ? "1px solid var(--bumblebee-yellow)" : "1px solid var(--border-subtle)",
+              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: 500,
+              transition: "var(--transition-fast)"
+            }}
+          >
+            <MessageSquare size={14} />
+            <span className="hide-on-mobile">Chat</span>
+            {session.dialogue?.messages && session.dialogue.messages.length > 0 && (
+              <span
+                style={{
+                  fontSize: "10px",
+                  background: "var(--bumblebee-yellow)",
+                  color: "#0F172A",
+                  borderRadius: "10px",
+                  padding: "1px 5px",
+                  fontWeight: 700
+                }}
+              >
+                {session.dialogue.messages.length}
+              </span>
+            )}
+          </button>
+
           {/* Voice Mute Toggle */}
           <button
             onClick={() => setIsTtsMuted((m) => !m)}
@@ -695,9 +734,24 @@ export default function BumblebeeChamber() {
         isProcessing={isProcessing}
         isObdConnected={obdTelemetry.connected}
         onToggleObd={toggleObdTelemetry}
+        onOpenChat={() => setActiveModal(activeModal === "chat" ? "none" : "chat")}
+        isChatOpen={activeModal === "chat"}
       />
 
       {/* 7. Drawers & Modals */}
+      {activeModal === "chat" && (
+        <ChatDrawer
+          messages={session.dialogue?.messages || []}
+          vehicle={session.vehicle_profile}
+          phase={phase}
+          isProcessing={isProcessing}
+          onSendMessage={(text) => handleTurn(text)}
+          onSelectVehicle={(make, model, year) => handleTurn(`Set vehicle to ${year} ${make} ${model}`)}
+          onSpeakText={(text) => speakText(text)}
+          onClose={() => setActiveModal("none")}
+        />
+      )}
+
       {activeModal === "parts" && (
         <PartsDrawer vehicle={session.vehicle_profile} onClose={() => setActiveModal("none")} />
       )}

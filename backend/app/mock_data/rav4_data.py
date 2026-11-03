@@ -392,6 +392,8 @@ GENERIC_PROCEDURE = RepairProcedure(
 def create_dynamic_vehicle_profile(make: str, model: str, year: int) -> VehicleProfile:
     """Generates an accurate vehicle profile for any detected vehicle."""
     make_clean = make.strip().title()
+    if make_clean.upper() in ["BMW", "GMC", "VW"]:
+        make_clean = make_clean.upper()
     model_clean = model.strip().title()
     return VehicleProfile(
         id=f"{make_clean.lower()}_{model_clean.lower()}_{year}",
