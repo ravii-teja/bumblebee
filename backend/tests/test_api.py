@@ -344,6 +344,31 @@ def test_chat_combined_vehicle_and_issue_one_turn():
     assert "Step 1" in data["text"]
 
 
+def test_conversational_voice_greeting_and_courtesy():
+    """Verifies that voice turns like 'hello' and 'thank you' respond naturally and courteously."""
+    init_res = client.post("/api/v1/sessions", json={
+        "vehicle_id": "generic_vehicle",
+        "procedure_id": "general_inspection"
+    })
+    session_id = init_res.json()["session_id"]
+
+    # 1. Greeting
+    hello_turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "Hello Bumblebee"
+    })
+    assert hello_turn.status_code == 200
+    assert "Hello" in hello_turn.json()["speech_text"]
+
+    # 2. Courtesy
+    thanks_turn = client.post("/api/v1/conversation/turn", json={
+        "session_id": session_id,
+        "user_speech_or_text": "Thank you"
+    })
+    assert thanks_turn.status_code == 200
+    assert "welcome" in thanks_turn.json()["speech_text"].lower()
+
+
 
 
 

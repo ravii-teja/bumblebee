@@ -198,6 +198,23 @@ class ConversationalAgentService:
         input_clean = user_input.strip()
         input_lower = input_clean.lower()
 
+        # Conversational greetings & courtesy
+        if input_lower in ["hi", "hello", "hey", "hey bumblebee", "hello bumblebee", "good morning", "good afternoon"]:
+            veh = session.vehicle_profile
+            if veh and veh.make and veh.make != "generic_vehicle" and veh.make.strip():
+                greeting = f"Hello! I'm Bumblebee. We're inspecting your {veh.year or ''} {veh.make} {veh.model}. What issue or question can I help you with?"
+            else:
+                greeting = "Hello! I'm Bumblebee, your master automotive diagnostic engineer. Tell me your vehicle make and model, or point your camera to begin."
+            return greeting, greeting, phase, {"action": "GREETING"}
+
+        if any(input_lower == w for w in ["thank you", "thanks", "appreciate it"]):
+            reply = "You're welcome! Let me know if you need any other diagnostics, part checks, or step guidance."
+            return reply, reply, phase, {"action": "COURTESY"}
+
+        if any(w in input_lower for w in ["who are you", "what can you do"]):
+            msg = "I am Bumblebee, your master automotive diagnostic and repair engineer. I can identify vehicles via camera, guide you through step-by-step verified physical repairs, diagnose DTC fault codes, and find verified replacement parts."
+            return msg, msg, phase, {"action": "CAPABILITIES"}
+
         # If user asks for summary or dossier
         if "summary" in input_lower or "report" in input_lower or "dossier" in input_lower:
             veh = session.vehicle_profile

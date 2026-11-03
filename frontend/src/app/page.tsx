@@ -5,7 +5,6 @@ import { RepairSession, ComponentObservation, VerificationResult, DialoguePhase 
 import { createSession, fetchComponents, verifyStepState, streamConversationTurn, FALLBACK_SESSION, FALLBACK_STEPS } from "@/lib/api";
 import { useCamera } from "@/hooks/useCamera";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useObdScanner } from "@/hooks/useObdScanner";
 import { saveSessionOffline } from "@/lib/offlineQueue";
 import { CameraViewport } from "@/components/camera/CameraViewport";
 import { CleanControlBar } from "@/components/hud/CleanControlBar";
@@ -16,7 +15,7 @@ import { EvidenceModal } from "@/components/evidence/EvidenceModal";
 import { SessionAuditModal } from "@/components/evidence/SessionAuditModal";
 import { ChatDrawer } from "@/components/hud/ChatDrawer";
 import { BumblebeeBrandBadge } from "@/components/hud/BumblebeeBrandBadge";
-import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera, Activity, MessageSquare } from "lucide-react";
+import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera, MessageSquare, X } from "lucide-react";
 
 export default function BumblebeeChamber() {
   const [session, setSession] = useState<RepairSession>(FALLBACK_SESSION);
@@ -33,6 +32,9 @@ export default function BumblebeeChamber() {
   const [aiMessage, setAiMessage] = useState<string>("");
   const [useSimulation, setUseSimulation] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentSpeakingText, setCurrentSpeakingText] = useState("");
+
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const {
     videoRef,
@@ -58,16 +60,7 @@ export default function BumblebeeChamber() {
     resumeAfterSpeaking
   } = useSpeechRecognition((text) => handleTurnRef.current(text));
 
-  const {
-    telemetry: obdTelemetry,
-    toggleTelemetry: toggleObdTelemetry
-  } = useObdScanner((codes) => {
-    if (codes && codes.length > 0) {
-      handleTurnRef.current(`Live OBD-II Scanner detected DTC ${codes.join(", ")} (System Too Lean Bank 1). Short Term Fuel Trim: +14.2%. Inspect intake and air cleaner housing.`);
-    }
-  });
-
-  // Text-to-Speech synthesizer with hands-free conversation continuation
+  // Robust Text-to-Speech synthesizer with hands-free conversation continuation
   const speakText = useCallback(
     (text: string) => {
       if (isTtsMuted || typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -78,17 +71,52 @@ export default function BumblebeeChamber() {
       pauseForSpeaking();
       setIsSpeaking(true);
 
-      const utterance = new SpeechSynthesisUtterance(text);
+      const cleanSpeech = text
+        .replace(/\*\*/g, "")
+        .replace(/\*/g, "")
+        .replace(/##/g, "")
+        .replace(/#/g, "")
+        .replace(/^-\s+/gm, "")
+        .replace(/`([^`]+)`/g, "$1")
+        .trim();
+
+      setCurrentSpeakingText(cleanSpeech);
+
+      const utterance = new SpeechSynthesisUtterance(cleanSpeech);
+      utteranceRef.current = utterance;
       utterance.rate = 1.05;
       utterance.pitch = 1.0;
 
-      utterance.onend = () => {
+      // Select natural English voice
+      const voices = window.speechSynthesis.getVoices();
+      const naturalVoice =
+        voices.find((v) =>
+          (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Daniel")) &&
+          v.lang.startsWith("en")
+        ) || voices.find((v) => v.lang.startsWith("en"));
+      if (naturalVoice) {
+        utterance.voice = naturalVoice;
+      }
+
+      // Safety timeout watchdog in case browser speech engine hangs
+      const timeoutMs = Math.max(3500, (cleanSpeech.length / 10) * 1000 + 4000);
+      const safetyTimer = setTimeout(() => {
         setIsSpeaking(false);
+        setCurrentSpeakingText("");
+        resumeAfterSpeaking();
+      }, timeoutMs);
+
+      utterance.onend = () => {
+        clearTimeout(safetyTimer);
+        setIsSpeaking(false);
+        setCurrentSpeakingText("");
         resumeAfterSpeaking();
       };
 
       utterance.onerror = () => {
+        clearTimeout(safetyTimer);
         setIsSpeaking(false);
+        setCurrentSpeakingText("");
         resumeAfterSpeaking();
       };
 
@@ -96,6 +124,24 @@ export default function BumblebeeChamber() {
     },
     [isTtsMuted, pauseForSpeaking, resumeAfterSpeaking]
   );
+
+  const interruptSpeech = useCallback(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setCurrentSpeakingText("");
+    resumeAfterSpeaking();
+  }, [resumeAfterSpeaking]);
+
+  const handleToggleVoice = useCallback(() => {
+    const nextState = !isVoiceActive;
+    toggleListening();
+    if (nextState) {
+      // Warm greeting on voice mode activation
+      speakText("Bumblebee voice mode ready. Tell me your vehicle or describe any issue.");
+    }
+  }, [isVoiceActive, toggleListening, speakText]);
 
   // Dispatch conversational turn
   const handleTurn = useCallback(
@@ -524,53 +570,11 @@ export default function BumblebeeChamber() {
         </div>
       </header>
 
-      {/* 2.5 Live OBD-II Diagnostic Telemetry Floating Pill */}
-      {obdTelemetry.connected && (
-        <div
-          id="obd-telemetry-pill"
-          className="glass-panel"
-          style={{
-            position: "absolute",
-            top: "clamp(66px, 9.5vh, 78px)",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 30,
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: "6px 14px",
-            borderRadius: "var(--radius-pill)",
-            border: "1px solid rgba(56, 189, 248, 0.45)",
-            background: "rgba(15, 23, 42, 0.88)",
-            fontSize: "11px",
-            fontWeight: 600,
-            color: "#38BDF8",
-            boxShadow: "0 0 20px rgba(56, 189, 248, 0.3)",
-            pointerEvents: "auto"
-          }}
-        >
-          <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-            <Activity size={13} color="#38BDF8" /> OBD-II Live:
-          </span>
-          <span style={{ color: "#F8FAFC" }}>{obdTelemetry.rpm} RPM</span>
-          <span style={{ color: "var(--text-muted)" }}>•</span>
-          <span style={{ color: "#FACC15" }}>STFT: +{obdTelemetry.stftPercent}%</span>
-          <span style={{ color: "var(--text-muted)" }}>•</span>
-          <span style={{ color: "#F8FAFC" }}>{obdTelemetry.coolantTempC}°C</span>
-          {obdTelemetry.dtcCodes.length > 0 && (
-            <>
-              <span style={{ color: "var(--text-muted)" }}>•</span>
-              <span style={{ color: "#F43F5E", fontWeight: 700 }}>DTC {obdTelemetry.dtcCodes.join(", ")}</span>
-            </>
-          )}
-        </div>
-      )}
-
       {/* 3. Live Verification Banner */}
       <VerificationBanner result={latestVerification} />
 
-      {/* 4. Interactive Voice Conversation Pill */}
-      {(isVoiceActive || transcript || isSpeaking) && !isProcessing && (
+      {/* 4. Interactive Voice Conversation Pill (Hands-Free Dynamic HUD) */}
+      {(isVoiceActive || isSpeaking || transcript || (isProcessing && isVoiceActive)) && (
         <div
           className="glass-panel"
           style={{
@@ -578,47 +582,102 @@ export default function BumblebeeChamber() {
             bottom: "clamp(96px, 13vh, 120px)",
             left: "50%",
             transform: "translateX(-50%)",
-            zIndex: 32,
-            padding: "8px 20px",
+            zIndex: 35,
+            padding: "8px 18px",
             borderRadius: "var(--radius-pill)",
             fontSize: "12px",
             fontWeight: 600,
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            background: "rgba(10, 13, 20, 0.94)",
+            background: "rgba(10, 14, 26, 0.96)",
             border: isSpeaking
-              ? "1px solid rgba(56, 189, 248, 0.5)"
-              : "1px solid rgba(250, 204, 21, 0.5)",
+              ? "1px solid rgba(56, 189, 248, 0.6)"
+              : isProcessing
+              ? "1px solid rgba(250, 204, 21, 0.5)"
+              : "1px solid rgba(250, 204, 21, 0.4)",
             boxShadow: isSpeaking
-              ? "0 8px 30px rgba(56, 189, 248, 0.25)"
-              : "0 8px 30px rgba(250, 204, 21, 0.25)",
-            maxWidth: "min(420px, calc(100vw - 32px))",
+              ? "0 8px 30px rgba(56, 189, 248, 0.35)"
+              : "0 8px 30px rgba(250, 204, 21, 0.3)",
+            maxWidth: "min(460px, calc(100vw - 32px))",
             color: isSpeaking ? "var(--accent-cyan)" : "var(--bumblebee-yellow)",
-            animation: "pulse-bumblebee 2s infinite"
+            pointerEvents: "auto"
           }}
         >
           <span
             style={{
-              width: 8,
-              height: 8,
+              width: 9,
+              height: 9,
               borderRadius: "50%",
-              backgroundColor: isSpeaking ? "#38BDF8" : "#FACC15",
-              boxShadow: isSpeaking ? "0 0 10px #38BDF8" : "0 0 10px #FACC15"
+              backgroundColor: isSpeaking ? "#38BDF8" : isProcessing ? "#FACC15" : "#34D399",
+              boxShadow: isSpeaking ? "0 0 10px #38BDF8" : "0 0 10px #FACC15",
+              animation: isSpeaking || isProcessing ? "pulse-bumblebee 1.2s infinite" : "none",
+              flexShrink: 0
             }}
           />
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+
+          <span
+            style={{
+              flex: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap"
+            }}
+          >
             {isSpeaking
-              ? "🔊 Bumblebee speaking..."
+              ? `🔊 ${currentSpeakingText || "Bumblebee speaking..."}`
+              : isProcessing
+              ? "⚡ Bumblebee is thinking..."
               : transcript
               ? `“${transcript}”`
-              : "🎙️ Listening... Speak naturally"}
+              : "🎙️ Listening... Speak naturally (or ask an issue)"}
           </span>
+
+          {/* Quick Interrupt Button when speaking */}
+          {isSpeaking && (
+            <button
+              onClick={interruptSpeech}
+              title="Interrupt & Speak"
+              style={{
+                background: "rgba(56, 189, 248, 0.2)",
+                border: "1px solid rgba(56, 189, 248, 0.4)",
+                borderRadius: "var(--radius-pill)",
+                color: "#38BDF8",
+                fontSize: "10px",
+                fontWeight: 700,
+                padding: "2px 8px",
+                cursor: "pointer",
+                flexShrink: 0
+              }}
+            >
+              Interrupt
+            </button>
+          )}
+
+          {/* Stop Voice Mode Button */}
+          {isVoiceActive && (
+            <button
+              onClick={handleToggleVoice}
+              title="Exit Voice Mode"
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                padding: "2px",
+                display: "flex",
+                alignItems: "center",
+                flexShrink: 0
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       )}
 
-      {/* 4.5. Active Processing & Online Visual Search Status Indicator */}
-      {isProcessing && (
+      {/* 4.5. Active Processing & Online Visual Search Status Indicator (when not in voice mode) */}
+      {isProcessing && !isVoiceActive && (
         <div
           className="glass-panel"
           style={{
@@ -724,16 +783,14 @@ export default function BumblebeeChamber() {
         </div>
       )}
 
-      {/* 6. Clean Floating Control Bar (Chat Option, Image Upload, Camera Shutter, Voice Mic, Live OBD-II) */}
+      {/* 6. Clean Floating Control Bar (Chat Option, Image Upload, Camera Shutter, Voice Mic) */}
       <CleanControlBar
         isListening={isVoiceActive || isListening}
-        onToggleVoice={toggleListening}
+        onToggleVoice={handleToggleVoice}
         onCaptureCamera={handleCameraScan}
         onSendChat={(text) => handleTurn(text)}
         onUploadImage={handleUploadImage}
         isProcessing={isProcessing}
-        isObdConnected={obdTelemetry.connected}
-        onToggleObd={toggleObdTelemetry}
         onOpenChat={() => setActiveModal(activeModal === "chat" ? "none" : "chat")}
         isChatOpen={activeModal === "chat"}
       />

@@ -22,6 +22,7 @@ interface SpeechRecognitionInstance {
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
 }
 
 export function useSpeechRecognition(onCommand?: (command: string) => void) {
@@ -49,14 +50,38 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
     isVoiceActiveRef.current = isVoiceActive;
   }, [isVoiceActive]);
 
+  const safeStop = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (!recognitionRef.current) return;
+    try {
+      recognitionRef.current.stop();
+    } catch {
+      // Ignore
+    }
+    setIsListening(false);
+  }, []);
+
   const dispatchCommand = useCallback((text: string) => {
     const clean = text.trim();
-    if (clean && onCommandRef.current) {
-      onCommandRef.current(clean);
-      setTranscript("");
-      currentTranscriptRef.current = "";
+    if (!clean) return;
+
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
     }
-  }, []);
+
+    // Stop recognition briefly to clear audio buffers for the next turn
+    safeStop();
+    setTranscript(clean);
+    currentTranscriptRef.current = "";
+
+    if (onCommandRef.current) {
+      onCommandRef.current(clean);
+    }
+  }, [safeStop]);
 
   const safeStart = useCallback(() => {
     if (!recognitionRef.current || isPausedRef.current) return;
@@ -66,16 +91,6 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
     } catch {
       // Already running or starting
     }
-  }, []);
-
-  const safeStop = useCallback(() => {
-    if (!recognitionRef.current) return;
-    try {
-      recognitionRef.current.stop();
-    } catch {
-      // Ignore
-    }
-    setIsListening(false);
   }, []);
 
   useEffect(() => {
@@ -95,45 +110,47 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
     recog.lang = "en-US";
 
     recog.onresult = (event: SpeechRecognitionEventLike) => {
-      // Audio Ducking: Ignore sound while Assistant is speaking TTS
+      // Audio Ducking: Ignore sound while assistant is speaking TTS
       if (isPausedRef.current || (typeof window !== "undefined" && window.speechSynthesis?.speaking)) {
         return;
       }
 
-      let fullTranscript = "";
+      let segment = "";
       let hasFinal = false;
 
-      for (let i = 0; i < event.results.length; i++) {
-        fullTranscript += event.results[i][0].transcript + " ";
-        if (event.results[i].isFinal) {
+      // Only inspect results starting from event.resultIndex to prevent past turn accumulation
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const item = event.results[i];
+        segment += item[0].transcript + " ";
+        if (item.isFinal) {
           hasFinal = true;
         }
       }
 
-      const cleaned = fullTranscript.trim();
-      setTranscript(cleaned);
-      currentTranscriptRef.current = cleaned;
+      const trimmed = segment.trim();
+      if (!trimmed) return;
 
-      // Reset any silence timeout
+      setTranscript(trimmed);
+      currentTranscriptRef.current = trimmed;
+
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
       }
 
-      // If marked final or after pause, trigger turn
+      // If recognized as final sentence or after 800ms silence, dispatch conversational turn
       if (hasFinal) {
-        dispatchCommand(cleaned);
+        dispatchCommand(trimmed);
       } else {
         silenceTimerRef.current = setTimeout(() => {
           if (currentTranscriptRef.current) {
             dispatchCommand(currentTranscriptRef.current);
           }
-        }, 1400);
+        }, 800);
       }
     };
 
     recog.onerror = (err: unknown) => {
       const e = err as { error?: string };
-      // no-speech or aborted are normal in conversational pauses
       if (e?.error !== "no-speech" && e?.error !== "aborted") {
         console.warn("Speech recognition notice:", e?.error || err);
       }
@@ -141,13 +158,13 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
 
     recog.onend = () => {
       setIsListening(false);
-      // Continuous hands-free loop: if voice mode is still engaged and not speaking TTS, restart
+      // Continuous hands-free loop: if voice mode is still engaged and not speaking TTS, restart cleanly
       if (isVoiceActiveRef.current && !isPausedRef.current) {
         setTimeout(() => {
           if (isVoiceActiveRef.current && !isPausedRef.current) {
             safeStart();
           }
-        }, 300);
+        }, 200);
       }
     };
 
@@ -160,7 +177,7 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
     };
   }, [dispatchCommand, safeStart, safeStop]);
 
-  // Pause recognition while assistant is speaking TTS
+  // Pause recognition while assistant is speaking TTS (audio ducking)
   const pauseForSpeaking = useCallback(() => {
     isPausedRef.current = true;
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
@@ -173,9 +190,11 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
     if (isVoiceActiveRef.current) {
       setTimeout(() => {
         if (isVoiceActiveRef.current && !isPausedRef.current) {
+          setTranscript("");
+          currentTranscriptRef.current = "";
           safeStart();
         }
-      }, 400);
+      }, 300);
     }
   }, [safeStart]);
 
@@ -188,6 +207,9 @@ export function useSpeechRecognition(onCommand?: (command: string) => void) {
       setTranscript("");
       currentTranscriptRef.current = "";
       safeStop();
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
     } else {
       // User activated voice mode
       setIsVoiceActive(true);
