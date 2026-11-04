@@ -133,52 +133,59 @@ export const FALLBACK_STEPS: RepairStep[] = [
 ];
 
 // Grounded fallback dataset for offline/mock presentation
-export const FALLBACK_SESSION: RepairSession = {
-  session_id: "sess_bumblebee_field",
-  vehicle_profile: {
-    id: "generic_vehicle",
-    make: "",
-    model: "Vehicle",
-    year: 2024,
-    trim: "Inspection",
-    engine: "Automotive Powertrain",
-    transmission: "Standard Transmission",
-    manual_name: "Official Manufacturer Service Documentation",
-    diagram_url: "/vehicles/clean_car_view.svg"
-  },
-  procedure: {
-    id: "general_inspection",
-    vehicle_id: "generic_vehicle",
-    title: "Automotive Diagnostic & Field Verification",
-    category: "Physical Field Inspection",
-    difficulty: "BEGINNER",
-    estimated_minutes: 10,
-    tools_required: ["Bumblebee Vision Camera Sensor"],
-    parts_required: ["Pending Vehicle & Issue Identification"],
-    safety_critical: false,
-    source_manual: "Official Manufacturer Service Documentation",
-    source_section: "Field Inspection Protocol",
-    steps: FALLBACK_STEPS
-  },
-  current_step_number: 1,
-  completed_steps: [],
-  observations: [],
-  verifications: {},
-  audit_trail: [],
-  dialogue: {
-    phase: "SCAN_VEHICLE",
-    detected_make: undefined,
-    confirmed_make: undefined,
-    model: undefined,
-    year: undefined,
-    reported_issue: undefined,
-    active_step: 1,
-    messages: []
-  },
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-  status: "IN_PROGRESS"
-};
+let fallbackSessionCounter = 0;
+export function createFreshFallbackSession(customId?: string): RepairSession {
+  fallbackSessionCounter += 1;
+  const dynamicId = customId || `sess_field_${fallbackSessionCounter}`;
+  return {
+    session_id: dynamicId,
+    vehicle_profile: {
+      id: "generic_vehicle",
+      make: "",
+      model: "Vehicle",
+      year: 2024,
+      trim: "Inspection",
+      engine: "Automotive Powertrain",
+      transmission: "Standard Transmission",
+      manual_name: "Official Manufacturer Service Documentation",
+      diagram_url: "/vehicles/clean_car_view.svg"
+    },
+    procedure: {
+      id: "general_inspection",
+      vehicle_id: "generic_vehicle",
+      title: "Automotive Diagnostic & Field Verification",
+      category: "Physical Field Inspection",
+      difficulty: "BEGINNER",
+      estimated_minutes: 10,
+      tools_required: ["Bumblebee Vision Camera Sensor"],
+      parts_required: ["Pending Vehicle & Issue Identification"],
+      safety_critical: false,
+      source_manual: "Official Manufacturer Service Documentation",
+      source_section: "Field Inspection Protocol",
+      steps: FALLBACK_STEPS
+    },
+    current_step_number: 1,
+    completed_steps: [],
+    observations: [],
+    verifications: {},
+    audit_trail: [],
+    dialogue: {
+      phase: "SCAN_VEHICLE",
+      detected_make: undefined,
+      confirmed_make: undefined,
+      model: undefined,
+      year: undefined,
+      reported_issue: undefined,
+      active_step: 1,
+      messages: []
+    },
+    created_at: "2024-01-01T00:00:00.000Z",
+    updated_at: "2024-01-01T00:00:00.000Z",
+    status: "IN_PROGRESS"
+  };
+}
+
+export const FALLBACK_SESSION: RepairSession = createFreshFallbackSession();
 
 const FALLBACK_COMPONENTS: ComponentObservation[] = [
   {
@@ -361,7 +368,7 @@ export async function createSession(vehicleId = "generic_vehicle", procedureId =
   } catch (err) {
     console.warn("Using offline fallback session:", err);
   }
-  return FALLBACK_SESSION;
+  return createFreshFallbackSession();
 }
 
 export async function fetchComponents(sessionId: string, focalPoint?: [number, number]): Promise<ComponentObservation[]> {
@@ -591,8 +598,27 @@ export async function sendConversationTurn(
     }
   }
 
-  const fallbackSession: RepairSession = JSON.parse(JSON.stringify(FALLBACK_SESSION));
+  const fallbackSession: RepairSession = createFreshFallbackSession();
   fallbackSession.session_id = sessionId;
+
+  const defaultModelsByMake: Record<string, string> = {
+    Honda: "Civic",
+    Toyota: "RAV4",
+    Ford: "F-150",
+    Chevrolet: "Silverado",
+    BMW: "3 Series",
+    Tesla: "Model 3",
+    Subaru: "Outback",
+    Nissan: "Altima",
+    Hyundai: "Elantra",
+    Kia: "Forte",
+    Mazda: "CX-5",
+    Volkswagen: "Golf"
+  };
+
+  if (make && model === "Vehicle") {
+    model = defaultModelsByMake[make] || "Sedan";
+  }
 
   let replyText = "To get started with guided diagnosis and repair, what is your vehicle's **make and model**? (e.g. **2023 Honda Civic**, **2022 Toyota RAV4**, or **Ford F-150**)";
   let replySpeech = "What is the make and model of your vehicle?";
@@ -610,11 +636,6 @@ export async function sendConversationTurn(
     replyText = `Vehicle confirmed: **${year} ${make} ${model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?`;
     replySpeech = `Vehicle confirmed: ${year} ${make} ${model}. What issue or symptom are you experiencing?`;
     nextPhase = "ASK_ISSUE";
-  } else if (make) {
-    fallbackSession.vehicle_profile.make = make;
-    replyText = `Understood, **${make}**. What model and year is your ${make}?`;
-    replySpeech = `Understood, ${make}. What model and year is your ${make}?`;
-    nextPhase = "ASK_MODEL_YEAR";
   } else if (yearMatch) {
     replyText = `Recorded year **${year}**. What is the **make and model** of your vehicle? (e.g. Honda Civic, Toyota RAV4)`;
     replySpeech = `Recorded year ${year}. What is the make and model of your vehicle?`;

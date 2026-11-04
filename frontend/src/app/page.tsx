@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { RepairSession, ComponentObservation, VerificationResult, DialoguePhase, DialogueMessage } from "@/lib/types";
-import { createSession, fetchComponents, verifyStepState, streamConversationTurn, FALLBACK_SESSION, FALLBACK_STEPS } from "@/lib/api";
+import { createSession, fetchComponents, verifyStepState, streamConversationTurn, createFreshFallbackSession, FALLBACK_STEPS } from "@/lib/api";
 import { useCamera } from "@/hooks/useCamera";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { saveSessionOffline } from "@/lib/offlineQueue";
@@ -18,7 +18,7 @@ import { BumblebeeBrandBadge } from "@/components/hud/BumblebeeBrandBadge";
 import { Sparkles, Volume2, VolumeX, FileText, Wrench, BookOpen, SwitchCamera, MessageSquare, X } from "lucide-react";
 
 export default function BumblebeeChamber() {
-  const [session, setSession] = useState<RepairSession>(FALLBACK_SESSION);
+  const [session, setSession] = useState<RepairSession>(createFreshFallbackSession);
   const [components, setComponents] = useState<ComponentObservation[]>([]);
   const [selectedComponent, setSelectedComponent] = useState<ComponentObservation | null>(null);
   const [activeModal, setActiveModal] = useState<"none" | "parts" | "manual" | "summary" | "chat">("none");
@@ -236,17 +236,26 @@ export default function BumblebeeChamber() {
     handleTurnRef.current = handleTurn;
   }, [handleTurn]);
 
-  // Initialize Session quietly without injecting hardcoded dialogue
+  // Initialize fresh new Session on page load / refresh
   useEffect(() => {
     let isMounted = true;
+    setAiMessage("");
+    setPhase("SCAN_VEHICLE");
+    setLatestVerification(null);
     async function init() {
       try {
         const sess = await createSession("generic_vehicle", "general_inspection");
         if (isMounted && sess) {
           setSession(sess);
+          if (sess.dialogue?.phase) {
+            setPhase(sess.dialogue.phase);
+          }
         }
       } catch (err) {
         console.warn("Using offline fallback session:", err);
+        if (isMounted) {
+          setSession(createFreshFallbackSession());
+        }
       }
     }
     init();
