@@ -29,14 +29,17 @@ async def identify_components(req: VisionIdentifyRequest):
     components = await meta_muse.identify_components(
         image_base64=req.image_base64,
         focal_point=req.focal_point,
-        simulation_frame_index=req.simulation_frame_index
+        simulation_frame_index=req.simulation_frame_index,
+        vehicle_make=session.vehicle_profile.make if session.vehicle_profile else None,
+        vehicle_model=session.vehicle_profile.model if session.vehicle_profile else None
     )
 
     # Attach SAM 3.1 polygons
     for comp in components:
-        poly = sam_service.get_segmentation_polygon(comp.component_id)
-        if poly:
-            comp.polygon_points = poly
+        if not comp.polygon_points or len(comp.polygon_points) < 3:
+            poly = sam_service.get_segmentation_polygon(comp.component_id)
+            if poly:
+                comp.polygon_points = poly
 
     session.observations = components
     try:
@@ -69,12 +72,25 @@ async def verify_step(req: VerifyStepRequest):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # Extract target step details from dynamic session procedure
+    current_step = next((s for s in session.procedure.steps if s.step_number == req.step_number), None)
+    step_title = current_step.title if current_step else None
+    step_instruction = current_step.instruction if current_step else None
+    expected_visual_state = current_step.expected_visual_state if current_step else None
+    v_make = session.vehicle_profile.make if session.vehicle_profile else None
+    v_model = session.vehicle_profile.model if session.vehicle_profile else None
+
     # Evaluate step verification via Meta Muse
     verification = await meta_muse.verify_step_visual_state(
         step_number=req.step_number,
         image_base64=req.image_base64,
         simulation_frame_index=req.simulation_frame_index,
-        override_human_confirmed=req.override_human_confirmed
+        override_human_confirmed=req.override_human_confirmed,
+        step_title=step_title,
+        step_instruction=step_instruction,
+        expected_visual_state=expected_visual_state,
+        vehicle_make=v_make,
+        vehicle_model=v_model
     )
 
     # Advance deterministic state machine

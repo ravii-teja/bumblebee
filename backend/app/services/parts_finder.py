@@ -227,10 +227,7 @@ class PartsFinderService:
                 )
             ]
 
-        # 5. Default / Air Filter Lookup (Toyota RAV4 specific or general)
-        if v_make.lower() == "toyota" and "rav4" in v_model.lower() and (not search_term or "air" in search_term):
-            return RAV4_PARTS
-
+        # 5. Default / Air Filter Lookup (Genuinely customized for detected vehicle)
         pn, part_title, price, catalog_name = BRAND_OEM_SPECS.get(
             v_make,
             (f"{v_make[:3].upper()}-9924-OEM", f"{v_make} Genuine OEM Engine Air Filter", 28.00, f"{v_make} Genuine Parts Network")

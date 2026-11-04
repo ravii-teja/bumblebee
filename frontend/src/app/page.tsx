@@ -203,8 +203,9 @@ export default function BumblebeeChamber() {
         if (res.phase === "ACTIVE_REPAIR") {
           const comps = await fetchComponents(session.session_id);
           setComponents(comps);
-          const airbox = comps.find((c) => c.component_id === "air_cleaner_assembly");
-          if (airbox) setSelectedComponent(airbox);
+          if (comps.length > 0) {
+            setSelectedComponent(comps[0]);
+          }
         }
       } finally {
         setIsProcessing(false);

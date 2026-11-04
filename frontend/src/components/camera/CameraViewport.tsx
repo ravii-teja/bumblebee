@@ -199,11 +199,9 @@ export function CameraViewport({
         ctx.fillText(reticleLabel, cx - tagW / 2, y2 + 30);
       }
 
-      // 2. Active Repair AR Highlights (SAM 3.1 Segmentation & Component Pins)
+      // 2. Active Repair AR Highlights (Dynamic SAM Polygon / Component Pins for ANY vehicle)
       if (phase === "ACTIVE_REPAIR" || phase === "ANALYZING_ISSUE") {
-        const targetComp = components.find(
-          (c) => c.component_id === "air_cleaner_assembly" || c.component_id === selectedComponent?.component_id
-        );
+        const targetComp = selectedComponent || components[0];
 
         if (targetComp && targetComp.polygon_points && targetComp.polygon_points.length >= 3) {
           const points = targetComp.polygon_points;

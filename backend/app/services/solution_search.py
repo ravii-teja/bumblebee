@@ -119,6 +119,152 @@ Provide a verified, non-safety-critical automotive diagnostic and repair guide i
         is_battery = any(w in issue_lower for w in ["battery", "start", "dead", "crank", "voltage", "terminal", "corrosion", "alternator"])
         is_spark_plug = any(w in issue_lower for w in ["spark", "plug", "misfire", "rough", "idle", "shaking", "cylinder", "coil"])
         is_coolant = any(w in issue_lower for w in ["coolant", "overheat", "radiator", "temperature", "reservoir", "antifreeze"])
+        is_oil = any(w in issue_lower for w in ["oil", "lube", "filter change", "viscosity", "dipstick", "synthetic", "drain"])
+        is_brakes = any(w in issue_lower for w in ["brake", "rotor", "pad", "squeal", "grind", "stopping", "pedal"])
+
+        if is_brakes:
+            return {
+                "hypothesis_title": f"{year} {make} {model} Front Brake Pad Wear Inspection & Replacement",
+                "root_cause": "Friction material on the brake pads has worn down below minimum service limit (3mm), causing reduced braking performance or audible wear indicator contact.",
+                "confidence": 0.94,
+                "manual_citation": f"{year} {make} {model} Workshop Manual — Braking System (Front Disc Brakes)",
+                "tools_required": ["Lug Wrench", "Hydraulic Floor Jack & Jack Stands", "Caliper Slider Pin Socket / Wrench (14mm/17mm)", "C-Clamp / Caliper Piston Tool", "Brake Cleaner"],
+                "parts_required": [f"{make} Genuine Ceramic Brake Pad Set", "Brake Hardware & Anti-Rattle Clips", "Synthetic High-Temp Brake Caliper Grease"],
+                "target_component": "brake_caliper_assembly",
+                "steps": [
+                    {
+                        "step_number": 1,
+                        "title": "Safely Lift and Support Vehicle, Remove Wheel",
+                        "instruction": "Loosen wheel lug nuts while on the ground. Raise the vehicle using designated chassis lift points and place securely on jack stands. Completely remove lug nuts and wheel.",
+                        "safety_warning": "NEVER work beneath a vehicle supported only by a hydraulic jack. Always set emergency parking brake and wheel chocks.",
+                        "expected_visual_state": "Wheel removed; brake rotor and caliper assembly clearly centered in camera frame."
+                    },
+                    {
+                        "step_number": 2,
+                        "title": "Unbolt Lower Caliper Slide Pin",
+                        "instruction": "Locate the caliper guide pin bolts on the backside of the caliper bracket. Using the appropriate socket/wrench, loosen and remove the lower slide pin bolt.",
+                        "safety_warning": "Do not let the brake fluid hose support the weight of the caliper or become kinked.",
+                        "expected_visual_state": "Lower caliper slider bolt removed; upper bolt loosened to allow pivot."
+                    },
+                    {
+                        "step_number": 3,
+                        "title": "Pivot Caliper Upward and Secure with Mechanic Wire",
+                        "instruction": "Pivot the caliper body upward on its top slide pin to expose the inner and outer brake pads. Secure the caliper with mechanic wire or S-hook to the strut spring.",
+                        "safety_warning": "Avoid hanging the caliper by the flexible rubber brake hose.",
+                        "expected_visual_state": "Caliper suspended above bracket; friction pads seated in bracket clips exposed."
+                    },
+                    {
+                        "step_number": 4,
+                        "title": "Extract Worn Brake Pads and Shims",
+                        "instruction": "Slide the outer and inner pads horizontally out of the stainless steel abutment clips. Note wear pattern across both pads.",
+                        "safety_warning": "Wear safety glasses and a dust mask. Clean bracket contact points with brake cleaner.",
+                        "expected_visual_state": "Caliper bracket slots empty; old brake pads removed."
+                    },
+                    {
+                        "step_number": 5,
+                        "title": "Compress Caliper Piston & Install New Pads",
+                        "instruction": "Using a piston press tool, slowly compress the caliper piston flush into its bore. Install new stainless abutment clips, apply caliper grease to pad ears, and slide new pads into the bracket.",
+                        "safety_warning": "Monitor brake master cylinder reservoir under hood to ensure fluid does not overflow while compressing piston.",
+                        "expected_visual_state": "New thick friction pads fitted securely in bracket; piston fully retracted."
+                    },
+                    {
+                        "step_number": 6,
+                        "title": "Lower Caliper, Torque Bolt & Pump Brake Pedal",
+                        "instruction": "Lower the caliper over the new pads. Align and torque the lower slide pin bolt to manufacturer spec. Remount wheel, lower vehicle, and pump brake pedal 3 times before driving.",
+                        "safety_warning": "CRITICAL: Pump brake pedal firmly several times before starting vehicle to set pads against rotor.",
+                        "expected_visual_state": "Caliper fully bolted in place; wheel reinstalled with lug nuts hand-tightened."
+                    }
+                ]
+            }
+
+        if is_oil:
+            return {
+                "hypothesis_title": f"{year} {make} {model} Engine Oil & Filter Change Service",
+                "root_cause": "Engine oil degradation, thermal breakdown, and particulate accumulation exceeding OEM service interval.",
+                "confidence": 0.96,
+                "manual_citation": f"{year} {make} {model} Maintenance Schedule — Engine Lubrication",
+                "tools_required": ["Oil Drain Pan (8+ qt)", "Box-end Wrench / Socket for Drain Plug", "Oil Filter Wrench", "Funnel", "Gloves"],
+                "parts_required": [f"{make} OEM Engine Oil Filter & Crush Washer", "Full Synthetic Engine Oil (per spec, e.g. 0W-20 / 5W-30)"],
+                "target_component": "oil_filter_drain_assembly",
+                "steps": [
+                    {
+                        "step_number": 1,
+                        "title": "Warm Engine & Remove Oil Fill Cap",
+                        "instruction": "Run engine for 2-3 minutes to warm oil. Turn off engine, open hood, and remove the engine oil filler cap to improve draining flow.",
+                        "safety_warning": "Engine components may be warm. Wear protective mechanic gloves.",
+                        "expected_visual_state": "Oil filler cap removed from engine valve cover."
+                    },
+                    {
+                        "step_number": 2,
+                        "title": "Position Drain Pan & Remove Oil Pan Drain Bolt",
+                        "instruction": "Slide catch pan beneath the oil pan drain bolt. Carefully loosen and remove the drain bolt with wrench. Allow hot oil to drain completely.",
+                        "safety_warning": "Draining oil may be hot. Keep hands clear of oil trajectory.",
+                        "expected_visual_state": "Drain bolt removed with oil flowing into drain basin."
+                    },
+                    {
+                        "step_number": 3,
+                        "title": "Reinstall Drain Bolt with New Crush Washer",
+                        "instruction": "Once oil slows to a light drip, clean the drain port surface. Place a brand-new aluminum crush washer on the drain bolt and torque to manufacturer specification.",
+                        "safety_warning": "Do not overtighten drain bolt into aluminum oil pan threads.",
+                        "expected_visual_state": "Clean drain bolt torqued with fresh crush washer seated flat."
+                    },
+                    {
+                        "step_number": 4,
+                        "title": "Unscrew and Replace Oil Filter",
+                        "instruction": "Position catch basin under oil filter. Loosen and spin off old filter. Wipe mounting flange clean. Lubricate rubber gasket of new filter with fresh oil and spin on hand-tight plus 3/4 turn.",
+                        "safety_warning": "Verify old rubber O-ring came off with old filter and did not stick to engine block.",
+                        "expected_visual_state": "New clean oil filter hand-tightened securely onto engine mounting flange."
+                    },
+                    {
+                        "step_number": 5,
+                        "title": "Pour Fresh Synthetic Engine Oil",
+                        "instruction": "Insert clean funnel into oil fill opening. Pour required capacity of factory-specified synthetic oil. Replace and tighten oil fill cap.",
+                        "safety_warning": "Do not overfill. Check dipstick after pouring to verify safe range.",
+                        "expected_visual_state": "Clean oil poured into fill port; cap reinstalled tightly."
+                    },
+                    {
+                        "step_number": 6,
+                        "title": "Start Engine, Inspect for Leaks & Check Dipstick",
+                        "instruction": "Start engine and idle for 60 seconds while monitoring oil pressure light. Inspect drain bolt and filter for leaks. Shut off, wait 3 minutes, and verify dipstick level is at top dot.",
+                        "safety_warning": "Verify oil pressure light turns off within 3 seconds of startup.",
+                        "expected_visual_state": "Engine running smoothly; zero drips beneath filter or drain plug; level verified on dipstick."
+                    }
+                ]
+            }
+
+        if is_coolant:
+            return {
+                "hypothesis_title": f"{year} {make} {model} Engine Cooling System & Thermostat Inspection",
+                "root_cause": "Cooling efficiency loss or coolant level depletion in expansion reservoir, leading to elevated cylinder head temperatures.",
+                "confidence": 0.93,
+                "manual_citation": f"{year} {make} {model} Owner's Manual — Chapter 8: Cooling System Maintenance",
+                "tools_required": ["Coolant Hydrometer / Refractometer", "Flashlight", "Clean Shop Towel"],
+                "parts_required": [f"{make} Genuine Super Long Life Coolant / Antifreeze (50/50 Pre-diluted)"],
+                "target_component": "coolant_reservoir_assembly",
+                "steps": [
+                    {
+                        "step_number": 1,
+                        "title": "Inspect Engine Coolant Level When COLD",
+                        "instruction": "Ensure engine has rested for at least 1 hour and is cold to the touch. Locate translucent coolant expansion reservoir and check fluid line between LOW and FULL marks.",
+                        "safety_warning": "DANGER: NEVER open radiator cap or pressurized coolant tank while engine is hot. Scalding steam hazard.",
+                        "expected_visual_state": "Expansion tank fluid level visible in targeting frame."
+                    },
+                    {
+                        "step_number": 2,
+                        "title": "Inspect Radiator & Heater Hoses for Leaks",
+                        "instruction": "Inspect upper and lower radiator hoses for bulging, softening, hairline cracks, or white crusty dried coolant residue around clamps.",
+                        "safety_warning": "Avoid touching moving drive belt pulleys or electric radiator fans.",
+                        "expected_visual_state": "Intact rubber hoses securely clamped without signs of swelling."
+                    },
+                    {
+                        "step_number": 3,
+                        "title": "Top Off Coolant in Expansion Reservoir",
+                        "instruction": "Open reservoir cap and pour approved 50/50 pre-diluted coolant until fluid reaches the FULL line. Reinstall cap securely.",
+                        "safety_warning": "Only use recommended manufacturer chemical formulation (HOAT/OAT specified for make).",
+                        "expected_visual_state": "Coolant reservoir filled exactly to FULL demarcation line."
+                    }
+                ]
+            }
 
         if is_cabin_filter:
             return {

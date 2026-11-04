@@ -411,19 +411,46 @@ def create_dynamic_vehicle_profile(make: str, model: str, year: int) -> VehicleP
 
 
 def create_dynamic_procedure(vehicle: VehicleProfile, issue: str) -> RepairProcedure:
-    """Generates a step-by-step repair procedure for the detected vehicle."""
+    """Generates a dynamic step-by-step repair procedure for the detected vehicle and issue."""
+    from app.services.solution_search import SolutionSearchService
+    sol = SolutionSearchService._generate_grounded_solution(
+        make=vehicle.make,
+        model=vehicle.model,
+        year=vehicle.year,
+        issue=issue
+    )
+    from app.models.schemas import RepairStep
+    raw_steps = sol.get("steps", [])
+    steps = [
+        RepairStep(
+            step_number=s.get("step_number", i+1),
+            title=s.get("title", f"Step {i+1}"),
+            instruction=s.get("instruction", ""),
+            required_tools=s.get("required_tools", sol.get("tools_required", ["Hands only"])),
+            safety_warning=s.get("safety_warning"),
+            expected_visual_state=s.get("expected_visual_state", "Step completion aligned with manufacturer tolerance."),
+            reference_manual_page=s.get("reference_manual_page", i + 1),
+            reference_diagram_url="/vehicles/clean_car_view.svg",
+            verification_criteria=s.get("verification_criteria", ["Visual state satisfied", "Component aligned"]),
+            sample_frame_key=None
+        )
+        for i, s in enumerate(raw_steps)
+    ]
+    if not steps:
+        steps = AIR_FILTER_PROCEDURE.steps
+
     return RepairProcedure(
         id=f"{vehicle.id}_procedure",
         vehicle_id=vehicle.id,
-        title=f"{vehicle.year} {vehicle.make} {vehicle.model} — Engine Air Cleaner Inspection & Replacement",
-        category="Routine Periodic Maintenance",
-        difficulty="BEGINNER",
-        estimated_minutes=10,
-        tools_required=["Hands only (Optional clean shop towel)"],
-        parts_required=[f"{vehicle.make} Genuine Air Filter Element or certified equivalent"],
+        title=f"{vehicle.year} {vehicle.make} {vehicle.model} — {sol.get('hypothesis_title', 'Vehicle Inspection & Service')}",
+        category="Automotive Field Service",
+        difficulty="INTERMEDIATE",
+        estimated_minutes=25,
+        tools_required=sol.get("tools_required", ["Basic Hand Tools"]),
+        parts_required=sol.get("parts_required", [f"{vehicle.make} OEM Replacement Parts"]),
         safety_critical=False,
-        source_manual=vehicle.manual_name,
-        source_section="Do-it-yourself maintenance: Air cleaner element",
-        steps=AIR_FILTER_PROCEDURE.steps
+        source_manual=sol.get("manual_citation", vehicle.manual_name),
+        source_section="Field Diagnostic & Physical Service Verification",
+        steps=steps
     )
 
