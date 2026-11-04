@@ -16,6 +16,22 @@ async def conversation_turn(req: ConversationalInputRequest):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # Retain client-provided vehicle details if session was generic
+    if req.vehicle_make and req.vehicle_make not in ["", "generic_vehicle"]:
+        if not session.vehicle_profile.make or session.vehicle_profile.make == "generic_vehicle":
+            from app.mock_data.rav4_data import create_dynamic_vehicle_profile, create_dynamic_procedure
+            session.vehicle_profile = create_dynamic_vehicle_profile(
+                make=req.vehicle_make,
+                model=req.vehicle_model or "Civic" if req.vehicle_make == "Honda" else "RAV4",
+                year=req.vehicle_year or 2023
+            )
+            session.dialogue.confirmed_make = req.vehicle_make
+            session.dialogue.model = session.vehicle_profile.model
+            session.dialogue.year = session.vehicle_profile.year
+
+    if req.reported_issue and not session.dialogue.reported_issue:
+        session.dialogue.reported_issue = req.reported_issue
+
     # Record user message
     user_msg = DialogueMessage(
         sender="USER",
@@ -93,6 +109,22 @@ async def conversation_stream(req: ConversationalInputRequest):
     session = RepairStateMachine.get_session(req.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # Retain client-provided vehicle details if session was generic
+    if req.vehicle_make and req.vehicle_make not in ["", "generic_vehicle"]:
+        if not session.vehicle_profile.make or session.vehicle_profile.make == "generic_vehicle":
+            from app.mock_data.rav4_data import create_dynamic_vehicle_profile, create_dynamic_procedure
+            session.vehicle_profile = create_dynamic_vehicle_profile(
+                make=req.vehicle_make,
+                model=req.vehicle_model or "Civic" if req.vehicle_make == "Honda" else "RAV4",
+                year=req.vehicle_year or 2023
+            )
+            session.dialogue.confirmed_make = req.vehicle_make
+            session.dialogue.model = session.vehicle_profile.model
+            session.dialogue.year = session.vehicle_profile.year
+
+    if req.reported_issue and not session.dialogue.reported_issue:
+        session.dialogue.reported_issue = req.reported_issue
 
     from fastapi.responses import StreamingResponse
     import json

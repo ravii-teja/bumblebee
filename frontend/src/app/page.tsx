@@ -202,7 +202,8 @@ export default function BumblebeeChamber() {
               speakText(speechText);
               setPhase(nextPhase as DialoguePhase);
             }
-          }
+          },
+          session
         );
 
         setAiMessage(res.text);

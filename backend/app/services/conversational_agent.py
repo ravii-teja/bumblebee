@@ -431,26 +431,52 @@ class ConversationalAgentService:
                 return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
 
         # -------------------------------------------------------------
+        # Ensure session vehicle is remembered across the entire chat conversation
+        # -------------------------------------------------------------
+        has_known_vehicle = bool(
+            (session.vehicle_profile.make and session.vehicle_profile.make != "generic_vehicle")
+            or (dialogue.confirmed_make and dialogue.confirmed_make != "generic_vehicle")
+        )
+
+        if has_known_vehicle and not is_vehicle_intent:
+            confirmed_make = session.vehicle_profile.make or dialogue.confirmed_make
+            confirmed_model = (
+                session.vehicle_profile.model
+                or dialogue.model
+                or DEFAULT_MAKE_MODEL.get(confirmed_make, "Civic" if confirmed_make == "Honda" else "RAV4")
+            )
+            confirmed_year = session.vehicle_profile.year or dialogue.year or 2023
+
+            session.vehicle_profile.make = confirmed_make
+            session.vehicle_profile.model = confirmed_model
+            session.vehicle_profile.year = confirmed_year
+            dialogue.confirmed_make = confirmed_make
+            dialogue.model = confirmed_model
+            dialogue.year = confirmed_year
+
+            # If still in setup phases, advance to ASK_ISSUE immediately!
+            if phase in ["SCAN_VEHICLE", "CONFIRM_MAKE", "ASK_MODEL_YEAR"]:
+                dialogue.phase = "ASK_ISSUE"
+                phase = "ASK_ISSUE"
+
+            if phase == "ASK_ISSUE":
+                clean_issue = clean_text_of_vehicle(input_clean, confirmed_make, confirmed_model, confirmed_year)
+                issue_candidate = extract_embedded_issue(input_clean) or (clean_issue if len(clean_issue) > 2 else None) or dialogue.reported_issue
+                if issue_candidate and not any(cmd in input_lower for cmd in ["scan", "camera", "identify"]):
+                    dialogue.reported_issue = issue_candidate
+                    user_input = issue_candidate
+                elif not dialogue.reported_issue:
+                    text = (
+                        f"Inspecting **{confirmed_year} {confirmed_make} {confirmed_model}**.\n\n"
+                        f"What issue or symptom are you experiencing with this {confirmed_make}?"
+                    )
+                    speech = f"Inspecting {confirmed_year} {confirmed_make} {confirmed_model}. What issue or symptom are you experiencing?"
+                    return text, speech, "ASK_ISSUE", {"vehicle": session.vehicle_profile.model_dump()}
+
+        # -------------------------------------------------------------
         # Phase 1: SCAN_VEHICLE -> Analyze Camera Image & Online Search
         # -------------------------------------------------------------
         if phase == "SCAN_VEHICLE":
-            # If vehicle is already set in session, do NOT ask to scan car again!
-            if session.vehicle_profile.make and session.vehicle_profile.make != "generic_vehicle":
-                dialogue.phase = "ASK_ISSUE"
-                dialogue.confirmed_make = session.vehicle_profile.make
-                dialogue.model = session.vehicle_profile.model
-                dialogue.year = session.vehicle_profile.year
-                veh = session.vehicle_profile
-                clean_issue = clean_text_of_vehicle(input_clean, veh.make, veh.model, veh.year)
-                if len(clean_issue) > 2 and not any(cmd in input_lower for cmd in ["scan", "camera", "identify"]):
-                    dialogue.reported_issue = clean_issue
-                    phase = "ASK_ISSUE"
-                    user_input = clean_issue
-                else:
-                    text = f"Inspecting **{veh.year or 2022} {veh.make} {veh.model}**.\n\nWhat issue or symptom are you experiencing?"
-                    speech = f"Inspecting {veh.year or 2022} {veh.make} {veh.model}. What issue or symptom are you experiencing?"
-                    return text, speech, "ASK_ISSUE", {"vehicle": veh.model_dump()}
-
             # If user spoke/typed a make directly
             if extracted_make:
                 dialogue.detected_make = extracted_make

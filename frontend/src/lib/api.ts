@@ -134,10 +134,12 @@ export const FALLBACK_STEPS: RepairStep[] = [
 
 // Grounded fallback dataset for offline/mock presentation
 let fallbackSessionCounter = 0;
+const localSessions = new Map<string, RepairSession>();
+
 export function createFreshFallbackSession(customId?: string): RepairSession {
   fallbackSessionCounter += 1;
   const dynamicId = customId || `sess_field_${fallbackSessionCounter}`;
-  return {
+  const sess: RepairSession = {
     session_id: dynamicId,
     vehicle_profile: {
       id: "generic_vehicle",
@@ -183,6 +185,8 @@ export function createFreshFallbackSession(customId?: string): RepairSession {
     updated_at: "2024-01-01T00:00:00.000Z",
     status: "IN_PROGRESS"
   };
+  localSessions.set(dynamicId, sess);
+  return sess;
 }
 
 export const FALLBACK_SESSION: RepairSession = createFreshFallbackSession();
@@ -364,11 +368,17 @@ export async function createSession(vehicleId = "generic_vehicle", procedureId =
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ vehicle_id: vehicleId, procedure_id: procedureId })
     });
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const sess = await res.json();
+      localSessions.set(sess.session_id, sess);
+      return sess;
+    }
   } catch (err) {
     console.warn("Using offline fallback session:", err);
   }
-  return createFreshFallbackSession();
+  const fresh = createFreshFallbackSession();
+  localSessions.set(fresh.session_id, fresh);
+  return fresh;
 }
 
 export async function fetchComponents(sessionId: string, focalPoint?: [number, number]): Promise<ComponentObservation[]> {
@@ -460,7 +470,8 @@ export async function streamConversationTurn(
   sessionId: string,
   userSpeechOrText: string,
   imageBase64?: string,
-  onSpeech?: (speechText: string, phase: string) => void
+  onSpeech?: (speechText: string, phase: string) => void,
+  currentSession?: RepairSession
 ): Promise<{
   text: string;
   speech_text: string;
@@ -475,7 +486,11 @@ export async function streamConversationTurn(
       body: JSON.stringify({
         session_id: sessionId,
         user_speech_or_text: userSpeechOrText,
-        image_base64: imageBase64
+        image_base64: imageBase64,
+        vehicle_make: currentSession?.vehicle_profile?.make,
+        vehicle_model: currentSession?.vehicle_profile?.model,
+        vehicle_year: currentSession?.vehicle_profile?.year,
+        reported_issue: currentSession?.dialogue?.reported_issue
       })
     });
 
@@ -526,6 +541,9 @@ export async function streamConversationTurn(
       }
 
       if (finalData) {
+        if (finalData.session) {
+          localSessions.set(sessionId, finalData.session);
+        }
         return finalData;
       }
     }
@@ -534,13 +552,14 @@ export async function streamConversationTurn(
   }
 
   // Fallback to standard synchronous turn endpoint
-  return sendConversationTurn(sessionId, userSpeechOrText, imageBase64);
+  return sendConversationTurn(sessionId, userSpeechOrText, imageBase64, currentSession);
 }
 
 export async function sendConversationTurn(
   sessionId: string,
   userSpeechOrText: string,
-  imageBase64?: string
+  imageBase64?: string,
+  currentSession?: RepairSession
 ): Promise<{
   text: string;
   speech_text: string;
@@ -555,18 +574,36 @@ export async function sendConversationTurn(
       body: JSON.stringify({
         session_id: sessionId,
         user_speech_or_text: userSpeechOrText,
-        image_base64: imageBase64
+        image_base64: imageBase64,
+        vehicle_make: currentSession?.vehicle_profile?.make,
+        vehicle_model: currentSession?.vehicle_profile?.model,
+        vehicle_year: currentSession?.vehicle_profile?.year,
+        reported_issue: currentSession?.dialogue?.reported_issue
       })
     });
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.session) {
+        localSessions.set(sessionId, data.session);
+      }
+      return data;
+    }
   } catch (err) {
     console.warn("Using offline conversation turn fallback:", err);
   }
 
-  // Graceful offline fallback with local entity resolution
-  let make = "";
-  let model = "Vehicle";
-  let year = 2024;
+  // Graceful offline fallback: retrieve existing session from localSessions or currentSession
+  const baseSession: RepairSession = currentSession || localSessions.get(sessionId) || createFreshFallbackSession(sessionId);
+  const fallbackSession: RepairSession = JSON.parse(JSON.stringify(baseSession));
+  fallbackSession.session_id = sessionId;
+
+  let make = fallbackSession.vehicle_profile?.make && fallbackSession.vehicle_profile.make !== "generic_vehicle"
+    ? fallbackSession.vehicle_profile.make
+    : "";
+  let model = fallbackSession.vehicle_profile?.model && fallbackSession.vehicle_profile.model !== "Vehicle"
+    ? fallbackSession.vehicle_profile.model
+    : "Vehicle";
+  let year = fallbackSession.vehicle_profile?.year || 2024;
   const inputLower = userSpeechOrText.toLowerCase();
 
   const yearMatch = userSpeechOrText.match(/\b(19[89]\d|20[0-2]\d)\b/);
@@ -598,9 +635,6 @@ export async function sendConversationTurn(
     }
   }
 
-  const fallbackSession: RepairSession = createFreshFallbackSession();
-  fallbackSession.session_id = sessionId;
-
   const defaultModelsByMake: Record<string, string> = {
     Honda: "Civic",
     Toyota: "RAV4",
@@ -620,9 +654,16 @@ export async function sendConversationTurn(
     model = defaultModelsByMake[make] || "Sedan";
   }
 
-  let replyText = "To get started with guided diagnosis and repair, what is your vehicle's **make and model**? (e.g. **2023 Honda Civic**, **2022 Toyota RAV4**, or **Ford F-150**)";
-  let replySpeech = "What is the make and model of your vehicle?";
-  let nextPhase = "CONFIRM_MAKE";
+  if (!fallbackSession.dialogue) {
+    fallbackSession.dialogue = {
+      phase: "SCAN_VEHICLE",
+      messages: []
+    };
+  }
+
+  let replyText = "";
+  let replySpeech = "";
+  let nextPhase = fallbackSession.dialogue?.phase || "CONFIRM_MAKE";
 
   if (make && model !== "Vehicle") {
     fallbackSession.vehicle_profile = {
@@ -633,12 +674,39 @@ export async function sendConversationTurn(
       id: `${make.toLowerCase()}_${model.toLowerCase()}_${year}`,
       manual_name: `${year} ${make} ${model} Official Owner & Maintenance Manual`
     };
-    replyText = `Vehicle confirmed: **${year} ${make} ${model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?`;
-    replySpeech = `Vehicle confirmed: ${year} ${make} ${model}. What issue or symptom are you experiencing?`;
-    nextPhase = "ASK_ISSUE";
+    fallbackSession.dialogue.confirmed_make = make;
+    fallbackSession.dialogue.model = model;
+    fallbackSession.dialogue.year = year;
+
+    const isStepCmd = inputLower.includes("next") || inputLower.includes("verify") || inputLower.includes("done");
+    if (isStepCmd && fallbackSession.dialogue.phase === "ACTIVE_REPAIR") {
+      const cur = fallbackSession.current_step_number || 1;
+      const nxt = Math.min(6, cur + 1);
+      fallbackSession.current_step_number = nxt;
+      if (!fallbackSession.completed_steps.includes(cur)) {
+        fallbackSession.completed_steps.push(cur);
+      }
+      replyText = `**Step ${nxt} of 6:** Physical step advancement confirmed for ${year} ${make} ${model}.\n\n👉 **Next Steps:**\n- Say **"Next step"** or tap shutter once inspected.\n- Say **"Tools needed"** or **"Show all steps"**.\n- Or describe any other symptoms.`;
+      replySpeech = `Step ${cur} verified. Now proceeding to Step ${nxt}.`;
+      nextPhase = "ACTIVE_REPAIR";
+    } else if (fallbackSession.dialogue.phase === "ASK_ISSUE" || (inputLower.length > 2 && !inputLower.includes("honda") && !inputLower.includes("toyota") && !inputLower.includes("car"))) {
+      fallbackSession.dialogue.reported_issue = userSpeechOrText;
+      fallbackSession.dialogue.phase = "ACTIVE_REPAIR";
+      nextPhase = "ACTIVE_REPAIR";
+      replyText = `**Diagnosis for ${year} ${make} ${model}:**\n- **Solution:** ${make} ${model} Field Maintenance & Component Service\n- **Root Cause:** Sensed variance matching reported condition: ${userSpeechOrText}\n- **Source Reference:** ${make} OEM Technical Service Manual\n- **Tools Needed:** Hand socket set, trim tool\n\n**Wireframe Overlay Active:** Component highlighted in camera.\n\n**Step 1:** Initial Visual Inspection\nInspect the affected component and harness connection for secure seating and wear.\n\n👉 **Next Steps:**\n- Say **"Next step"** or tap camera shutter once inspected.\n- Say **"Tools needed"** or **"Show all steps"**.\n- Or describe any other follow-up symptoms.`;
+      replySpeech = `Solution found for your ${make} ${model}. Step 1: Initial visual inspection. Say next step to continue.`;
+    } else {
+      replyText = `Vehicle confirmed: **${year} ${make} ${model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?`;
+      replySpeech = `Vehicle confirmed: ${year} ${make} ${model}. What issue or symptom are you experiencing?`;
+      nextPhase = "ASK_ISSUE";
+    }
   } else if (yearMatch) {
     replyText = `Recorded year **${year}**. What is the **make and model** of your vehicle? (e.g. Honda Civic, Toyota RAV4)`;
     replySpeech = `Recorded year ${year}. What is the make and model of your vehicle?`;
+    nextPhase = "CONFIRM_MAKE";
+  } else {
+    replyText = "To get started with guided diagnosis and repair, what is your vehicle's **make and model**? (e.g. **2023 Honda Civic**, **2022 Toyota RAV4**, or **Ford F-150**)";
+    replySpeech = "What is the make and model of your vehicle?";
     nextPhase = "CONFIRM_MAKE";
   }
 
@@ -647,10 +715,13 @@ export async function sendConversationTurn(
     ...fallbackSession.dialogue,
     phase: typedPhase,
     messages: [
+      ...(fallbackSession.dialogue?.messages || []),
       { sender: "USER", text: userSpeechOrText, phase: typedPhase, timestamp: new Date().toISOString() },
       { sender: "AI", text: replyText, speech_text: replySpeech, phase: typedPhase, timestamp: new Date().toISOString() }
     ]
   };
+
+  localSessions.set(sessionId, fallbackSession);
 
   return {
     text: replyText,

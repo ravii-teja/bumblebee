@@ -199,3 +199,7 @@ class ConversationalInputRequest(BaseModel):
     user_speech_or_text: str
     image_base64: Optional[str] = None
     force_phase: Optional[DialoguePhase] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_year: Optional[int] = None
+    reported_issue: Optional[str] = None
