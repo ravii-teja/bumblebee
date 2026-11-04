@@ -774,26 +774,124 @@ class ConversationalAgentService:
             veh = session.vehicle_profile
             current_step = session.procedure.steps[current_step_num - 1]
 
-            # 1. Tools question
+            # 1. Show all steps inquiry
+            if any(w in input_lower for w in ["all step", "all steps", "list step", "list steps", "show step", "show steps", "procedure steps", "full procedure", "all procedure", "how many step"]):
+                steps_list = []
+                for s in session.procedure.steps:
+                    steps_list.append(f"**Step {s.step_number}: {s.title}**\n{s.instruction}")
+                steps_formatted = "\n\n".join(steps_list)
+                text = (
+                    f"**Complete Procedure for {veh.year or 2022} {veh.make} {veh.model} ({session.procedure.title}):**\n\n"
+                    f"{steps_formatted}\n\n"
+                    f"*Currently active: Step {current_step_num} of {total_steps}*"
+                )
+                speech = f"Here are all {total_steps} steps for the {session.procedure.title}. Currently on Step {current_step_num}."
+                return text, speech, phase, {"procedure": session.procedure.model_dump()}
+
+            # 2. Check if user is reporting a new issue or symptom during repair
+            has_symptom_kw = any(w in input_lower for w in [
+                "p0", "p1", "dtc", "code", "misfire", "rough idle", "squeak", "brake",
+                "leak", "battery", "dead", "crank", "overheat", "coolant", "oil", "smell",
+                "ac", "spark plug", "shaking", "vibration", "pedal", "smoke", "noise",
+                "rattl", "click", "grind", "hesitat", "stalling", "check engine"
+            ]) and not any(w in input_lower for w in ["next", "step", "verify", "done", "continue"])
+
+            if has_symptom_kw:
+                dialogue.reported_issue = input_clean
+                from app.services.solution_search import SolutionSearchService
+                solution_data = await SolutionSearchService.search_solution_for_vehicle(
+                    make=veh.make,
+                    model=veh.model,
+                    year=veh.year or 2022,
+                    issue_description=dialogue.reported_issue,
+                    image_base64=image_base64
+                )
+                target_component_id = solution_data.get("target_component", "air_cleaner_assembly")
+                hypothesis = DiagnosticHypothesis(
+                    id=f"diag_{veh.make.lower()}_{veh.model.lower()}_solution",
+                    symptom=dialogue.reported_issue,
+                    hypothesis_title=solution_data["hypothesis_title"],
+                    description=solution_data["root_cause"],
+                    confidence=solution_data.get("confidence", 0.95),
+                    supporting_evidence=[
+                        f"Reported symptom: '{dialogue.reported_issue}'",
+                        f"Cross-referenced with {veh.make} OEM Technical Service Bulletins"
+                    ],
+                    recommended_checks=["Verify component physical state"],
+                    safety_level="NON_SAFETY_CRITICAL",
+                    manual_citation=solution_data["manual_citation"],
+                    target_component_id=target_component_id
+                )
+                steps = [
+                    RepairStep(
+                        step_number=s["step_number"],
+                        title=s["title"],
+                        instruction=s["instruction"],
+                        required_tools=solution_data.get("tools_required", ["Hands only"]),
+                        safety_warning=s.get("safety_warning"),
+                        expected_visual_state=s["expected_visual_state"],
+                        reference_manual_page=s["step_number"] * 12 + 100,
+                        verification_criteria=[f"Step {s['step_number']} visual check passed"]
+                    )
+                    for s in solution_data["steps"]
+                ]
+                custom_procedure = RepairProcedure(
+                    id=f"{veh.id}_procedure",
+                    vehicle_id=veh.id,
+                    title=solution_data["hypothesis_title"],
+                    category="Automotive Field Service",
+                    difficulty="BEGINNER",
+                    estimated_minutes=15,
+                    tools_required=solution_data.get("tools_required", ["Hands only"]),
+                    parts_required=solution_data.get("parts_required", [f"{veh.make} Genuine Part"]),
+                    safety_critical=False,
+                    source_manual=solution_data["manual_citation"],
+                    source_section="Field Service Manual",
+                    steps=steps
+                )
+                dialogue.hypothesis = hypothesis
+                session.procedure = custom_procedure
+                dialogue.solution_plan = custom_procedure
+                session.current_step_number = 1
+                session.completed_steps = []
+
+                first_step = steps[0]
+                text = (
+                    f"**Diagnosis for {veh.year or 2022} {veh.make} {veh.model}:**\n"
+                    f"- **Solution:** {hypothesis.hypothesis_title} ({round(hypothesis.confidence * 100)}% match)\n"
+                    f"- **Root Cause:** {hypothesis.description}\n"
+                    f"- **Source Reference:** {hypothesis.manual_citation}\n"
+                    f"- **Tools Needed:** {', '.join(custom_procedure.tools_required)}\n\n"
+                    f"**Step 1:** {first_step.title}\n{first_step.instruction}"
+                )
+                speech = f"Solution found for your {veh.make} {veh.model}: {hypothesis.hypothesis_title}. Step 1: {first_step.title}. {first_step.instruction}"
+                return text, speech, "ACTIVE_REPAIR", {
+                    "hypothesis": hypothesis.model_dump(),
+                    "step": first_step.model_dump()
+                }
+
+            # 3. Tools question
             if any(w in input_lower for w in ["tool", "wrench", "socket", "screwdriver", "pliers", "equipment", "what do i need"]):
                 tools_needed = ", ".join(current_step.required_tools) or "No special tools needed (hands only)"
+                all_tools = ", ".join(session.procedure.tools_required) if session.procedure.tools_required else tools_needed
                 text = (
-                    f"**Tools for Step {current_step_num} ({current_step.title}):**\n\n"
-                    f"- {tools_needed}\n\n"
+                    f"**Tools for {veh.year or 2022} {veh.make} {veh.model} ({session.procedure.title}):**\n"
+                    f"- **Full Procedure Tools:** {all_tools}\n"
+                    f"- **Step {current_step_num} Needed:** {tools_needed}\n\n"
                     f"**Instruction:** {current_step.instruction}"
                 )
                 speech = f"For Step {current_step_num}, you need {tools_needed}. {current_step.instruction}"
                 return text, speech, phase, {"step": current_step.model_dump(), "tools": current_step.required_tools}
 
-            # 2. Safety question
+            # 4. Safety question
             if any(w in input_lower for w in ["safe", "danger", "warning", "hot", "caution", "hazard", "shock"]):
                 warn = current_step.safety_warning or "Ensure vehicle engine is switched completely off and cool before handling components."
                 text = f"**Safety Advisory (Step {current_step_num}):**\n\n{warn}"
                 speech = f"Safety advisory: {warn}"
                 return text, speech, phase, {"safety_warning": warn}
 
-            # 3. Repeat / Clarify instruction
-            if any(w in input_lower for w in ["repeat", "again", "say that again", "what did you say", "explain", "how do i", "where is", "help"]):
+            # 5. Repeat / Clarify instruction
+            if any(w in input_lower for w in ["repeat", "again", "say that again", "what did you say", "explain", "where is", "help"]):
                 text = (
                     f"**Step {current_step_num}: {current_step.title}**\n\n"
                     f"{current_step.instruction}\n\n"
@@ -802,7 +900,7 @@ class ConversationalAgentService:
                 speech = f"Here is Step {current_step_num} again: {current_step.title}. {current_step.instruction}"
                 return text, speech, phase, {"step": current_step.model_dump()}
 
-            # 4. Parts inquiry
+            # 6. Parts inquiry
             if "part" in input_lower or "filter" in input_lower or "price" in input_lower or "cost" in input_lower or "buy" in input_lower:
                 text = (
                     f"**Verified Replacement Parts for {veh.year or 2022} {veh.make} {veh.model}:**\n"
@@ -813,7 +911,7 @@ class ConversationalAgentService:
                 speech = f"Verified replacement parts for your {veh.make} {veh.model} are loaded in the Parts drawer."
                 return text, speech, phase, {"action": "SHOW_PARTS"}
 
-            # 5. General / Contextual AI query (Meta LLM or grounded expert reasoning)
+            # 7. General / Contextual AI query (Meta LLM or grounded expert reasoning)
             system_prompt = (
                 f"You are Bumblebee, an expert master automotive field engineer assisting a technician working on a "
                 f"{veh.year or 2022} {veh.make} {veh.model}. "

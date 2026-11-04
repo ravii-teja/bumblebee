@@ -41,16 +41,98 @@ const COMMON_MAKES = [
   "Jeep", "Dodge", "Ram", "Lexus", "Volvo", "Porsche", "GMC"
 ];
 
+const VEHICLE_PROMPT_CHIPS = [
+  { label: "2023 Honda Civic", text: "2023 Honda Civic" },
+  { label: "2022 Toyota RAV4", text: "2022 Toyota RAV4" },
+  { label: "2021 Ford F-150", text: "2021 Ford F-150" },
+  { label: "2024 BMW 3 Series", text: "2024 BMW 3 Series" },
+  { label: "2023 Tesla Model 3", text: "2023 Tesla Model 3" },
+  { label: "2022 Chevy Silverado", text: "2022 Chevrolet Silverado" }
+];
+
 const ISSUE_PROMPT_CHIPS = [
-  { label: "Rough Idle / Shaking", text: "Engine has rough idle and shakes when stopped" },
   { label: "Check Engine P0171", text: "What does code P0171 mean and how do I fix it?" },
+  { label: "Rough Idle / Shaking", text: "Engine has rough idle and shakes when stopped" },
   { label: "Squeaking Brakes", text: "Brakes make high-pitched squealing sound when stopping" },
   { label: "Battery Won't Crank", text: "Car won't start, clicks rapidly when turning key" },
   { label: "Engine Overheating", text: "Coolant temperature gauge is in the red and overheating" },
   { label: "Oil Leak Under Car", text: "Noticeable oil spot underneath front engine bay" },
+  { label: "Show All Steps", text: "Show all steps of the procedure" },
   { label: "Tools Required", text: "What tools do I need for this repair?" },
   { label: "Next Step", text: "Next step" }
 ];
+
+function formatMessageContent(text: string) {
+  const lines = text.split("\n");
+  return lines.map((line, idx) => {
+    if (!line.trim()) {
+      return <div key={idx} style={{ height: "4px" }} />;
+    }
+    // Check if line is bold header
+    if (line.startsWith("**") && line.endsWith("**")) {
+      const content = line.slice(2, -2);
+      return (
+        <div key={idx} style={{ fontWeight: 700, color: "var(--bumblebee-yellow)", marginTop: "4px" }}>
+          {content}
+        </div>
+      );
+    }
+    // Check for bullet items starting with "- **Label:** rest"
+    const bulletMatch = line.match(/^-\s*\*\*(.*?):\*\*(.*)$/);
+    if (bulletMatch) {
+      return (
+        <div key={idx} style={{ display: "flex", gap: "6px", marginLeft: "2px", margin: "2px 0" }}>
+          <span style={{ color: "var(--bumblebee-yellow)", flexShrink: 0 }}>•</span>
+          <div>
+            <strong style={{ color: "#FEF08A" }}>{bulletMatch[1]}:</strong>
+            <span style={{ color: "#E2E8F0" }}>{bulletMatch[2]}</span>
+          </div>
+        </div>
+      );
+    }
+    // Bullet starting with "- "
+    if (line.startsWith("- ") || line.startsWith("• ")) {
+      return (
+        <div key={idx} style={{ display: "flex", gap: "6px", marginLeft: "2px", margin: "2px 0" }}>
+          <span style={{ color: "var(--bumblebee-yellow)", flexShrink: 0 }}>•</span>
+          <span style={{ color: "#E2E8F0" }}>{line.slice(2)}</span>
+        </div>
+      );
+    }
+    // Step header like "**Step 1:** Title"
+    const stepMatch = line.match(/^\*\*(Step\s*\d+:?.*?)\*\*(.*)$/i);
+    if (stepMatch) {
+      return (
+        <div
+          key={idx}
+          style={{
+            marginTop: "6px",
+            marginBottom: "4px",
+            padding: "6px 8px",
+            background: "rgba(250, 204, 21, 0.1)",
+            borderLeft: "3px solid var(--bumblebee-yellow)",
+            borderRadius: "4px"
+          }}
+        >
+          <span style={{ fontWeight: 700, color: "var(--bumblebee-yellow)" }}>{stepMatch[1]}</span>
+          <span style={{ color: "#F8FAFC", marginLeft: "4px" }}>{stepMatch[2]}</span>
+        </div>
+      );
+    }
+    // Regular text with inline bold
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    return (
+      <div key={idx} style={{ color: "#E2E8F0" }}>
+        {parts.map((p, pIdx) => {
+          if (p.startsWith("**") && p.endsWith("**")) {
+            return <strong key={pIdx} style={{ color: "#FFF", fontWeight: 600 }}>{p.slice(2, -2)}</strong>;
+          }
+          return p;
+        })}
+      </div>
+    );
+  });
+}
 
 export function ChatDrawer({
   messages,
@@ -463,7 +545,9 @@ export function ChatDrawer({
                       : "0 4px 14px rgba(0,0,0,0.5), 0 0 10px rgba(250, 204, 21, 0.08)"
                   }}
                 >
-                  {msg.text}
+                  <div style={{ wordBreak: "break-word" }}>
+                    {formatMessageContent(msg.text)}
+                  </div>
 
                   {/* Optional Voice replay button for AI messages */}
                   {!isUser && onSpeakText && msg.speech_text && (
@@ -528,7 +612,7 @@ export function ChatDrawer({
           whiteSpace: "nowrap"
         }}
       >
-        {ISSUE_PROMPT_CHIPS.map((chip, i) => (
+        {(hasVehicle ? ISSUE_PROMPT_CHIPS : VEHICLE_PROMPT_CHIPS).map((chip, i) => (
           <button
             key={i}
             onClick={() => onSendMessage(chip.text)}
@@ -536,9 +620,9 @@ export function ChatDrawer({
             style={{
               padding: "4px 10px",
               borderRadius: "var(--radius-pill)",
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(250, 204, 21, 0.2)",
-              color: "#E2E8F0",
+              background: hasVehicle ? "rgba(255, 255, 255, 0.05)" : "rgba(250, 204, 21, 0.12)",
+              border: hasVehicle ? "1px solid rgba(250, 204, 21, 0.2)" : "1px solid rgba(250, 204, 21, 0.4)",
+              color: hasVehicle ? "#E2E8F0" : "var(--bumblebee-yellow)",
               fontSize: "11px",
               fontWeight: 500,
               cursor: isProcessing ? "not-allowed" : "pointer",

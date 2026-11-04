@@ -114,6 +114,7 @@ Provide a verified, non-safety-critical automotive diagnostic and repair guide i
         issue_lower = issue.lower()
 
         # Categorize issue
+        is_p0171_lean = any(w in issue_lower for w in ["p0171", "lean", "system too lean", "vacuum leak", "maf", "mass airflow", "air flow sensor"])
         is_air_filter = any(w in issue_lower for w in ["air", "filter", "sluggish", "fuel", "mpg", "hesitation", "intake", "choke", "stall", "throttle"])
         is_cabin_filter = any(w in issue_lower for w in ["cabin", "ac", "air condition", "smell", "odor", "blower", "musty", "hvac", "vent"])
         is_battery = any(w in issue_lower for w in ["battery", "start", "dead", "crank", "voltage", "terminal", "corrosion", "alternator"])
@@ -121,6 +122,61 @@ Provide a verified, non-safety-critical automotive diagnostic and repair guide i
         is_coolant = any(w in issue_lower for w in ["coolant", "overheat", "radiator", "temperature", "reservoir", "antifreeze"])
         is_oil = any(w in issue_lower for w in ["oil", "lube", "filter change", "viscosity", "dipstick", "synthetic", "drain"])
         is_brakes = any(w in issue_lower for w in ["brake", "rotor", "pad", "squeal", "grind", "stopping", "pedal"])
+
+        if is_p0171_lean:
+            return {
+                "hypothesis_title": f"{year} {make} {model} DTC P0171 (System Too Lean Bank 1) Diagnostic & Vacuum Leak Inspection",
+                "root_cause": "Unmetered intake air entering past the Mass Airflow (MAF) sensor due to a cracked rubber intake boot, disconnected vacuum line, or contaminated MAF hot-wire element.",
+                "confidence": 0.96,
+                "manual_citation": f"{year} {make} {model} Powertrain Diagnostic Manual — DTC P0171 Fuel Trim System Lean",
+                "tools_required": ["Flashlight", "Torx / Phillips Screwdriver for MAF", "MAF Sensor Aerosol Cleaner", "Clean shop towel"],
+                "parts_required": [f"{make} OEM Intake Accordion Boot or PCV Vacuum Hose", "Dedicated CRC Mass Airflow Cleaner"],
+                "target_component": "air_cleaner_assembly",
+                "steps": [
+                    {
+                        "step_number": 1,
+                        "title": f"Inspect {make} Air Intake Accordion Duct",
+                        "instruction": f"Inspect the ribbed rubber intake hose connecting the {make} air filter box to the throttle body. Bend the ribs gently with fingers to check for hidden splits or tears.",
+                        "safety_warning": "Ensure engine is switched OFF. Do not strain electrical harness connectors.",
+                        "expected_visual_state": "Air intake accordion duct centered in frame; rubber ribs intact with no hairline tears."
+                    },
+                    {
+                        "step_number": 2,
+                        "title": "Inspect PCV & Intake Manifold Vacuum Hoses",
+                        "instruction": "Follow all small-diameter vacuum lines connected to the intake manifold, PCV valve, and brake booster. Verify each hose is firmly clamped and free of cracks.",
+                        "safety_warning": "Do not touch hot exhaust heat shields.",
+                        "expected_visual_state": "Vacuum hoses securely attached to manifold ports without loose fittings."
+                    },
+                    {
+                        "step_number": 3,
+                        "title": "Remove and Inspect Mass Airflow (MAF) Sensor",
+                        "instruction": "Unplug the MAF electrical connector. Remove the two retaining screws and gently pull the MAF sensor out of the intake housing.",
+                        "safety_warning": "CRITICAL: NEVER touch the delicate platinum sensing wire with fingers or tools.",
+                        "expected_visual_state": "MAF sensor body removed from intake housing with sensing bulb visible."
+                    },
+                    {
+                        "step_number": 4,
+                        "title": "Clean MAF Sensor Wire with Dedicated Solvent",
+                        "instruction": "Spray 10 to 15 quick bursts of dedicated MAF cleaner directly onto the internal wire elements and temperature bulb. Allow to air-dry completely for 10 minutes.",
+                        "safety_warning": "Only use dedicated residue-free MAF cleaner. Do NOT use brake cleaner or carburetor cleaner.",
+                        "expected_visual_state": "Internal sensor wires clean, metallic, and free of oil mist or dust film."
+                    },
+                    {
+                        "step_number": 5,
+                        "title": "Reinstall MAF Sensor and Torque Screws",
+                        "instruction": "Verify the rubber O-ring is seated flat on the sensor flange. Slide sensor back into intake tube and tighten retaining screws hand-snug. Reconnect electrical clip.",
+                        "safety_warning": "Do not overtighten screws into the plastic intake housing.",
+                        "expected_visual_state": "Sensor mounted flush with connector clicked firmly in place."
+                    },
+                    {
+                        "step_number": 6,
+                        "title": "Clear Fault Code and Verify Idle Fuel Trim",
+                        "instruction": "Start engine. Connect OBD scanner or scan tool, clear code P0171, and idle engine for 5 minutes. Verify Long Term Fuel Trim drops within normal +/- 5% range.",
+                        "safety_warning": "Ensure vehicle is in Park with emergency brake set.",
+                        "expected_visual_state": "Engine idling smoothly; check engine light remains OFF."
+                    }
+                ]
+            }
 
         if is_brakes:
             return {
