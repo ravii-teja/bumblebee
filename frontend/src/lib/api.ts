@@ -3,7 +3,8 @@ import {
   RepairStep,
   ComponentObservation,
   VerificationResult,
-  PartCandidate
+  PartCandidate,
+  DialoguePhase
 } from "./types";
 
 export function getApiBase(): string {
@@ -555,13 +556,87 @@ export async function sendConversationTurn(
     console.warn("Using offline conversation turn fallback:", err);
   }
 
-  // Graceful offline fallback — never hardcoding a brand
+  // Graceful offline fallback with local entity resolution
+  let make = "";
+  let model = "Vehicle";
+  let year = 2024;
+  const inputLower = userSpeechOrText.toLowerCase();
+
+  const yearMatch = userSpeechOrText.match(/\b(19[89]\d|20[0-2]\d)\b/);
+  if (yearMatch) year = parseInt(yearMatch[1]);
+
+  const makes = [
+    "Honda", "Toyota", "Ford", "Chevrolet", "BMW", "Tesla", "Subaru",
+    "Nissan", "Hyundai", "Kia", "Mazda", "Volkswagen", "Lexus", "Mercedes-Benz", "Audi"
+  ];
+  for (const m of makes) {
+    if (inputLower.includes(m.toLowerCase())) {
+      make = m;
+      break;
+    }
+  }
+
+  const models = [
+    { model: "Civic", make: "Honda" }, { model: "Accord", make: "Honda" }, { model: "CR-V", make: "Honda" },
+    { model: "RAV4", make: "Toyota" }, { model: "Camry", make: "Toyota" }, { model: "Corolla", make: "Toyota" },
+    { model: "F-150", make: "Ford" }, { model: "Mustang", make: "Ford" }, { model: "Explorer", make: "Ford" },
+    { model: "Model 3", make: "Tesla" }, { model: "Model Y", make: "Tesla" },
+    { model: "Silverado", make: "Chevrolet" }, { model: "Outback", make: "Subaru" }, { model: "3 Series", make: "BMW" }
+  ];
+  for (const m of models) {
+    if (inputLower.includes(m.model.toLowerCase())) {
+      model = m.model;
+      if (!make) make = m.make;
+      break;
+    }
+  }
+
+  const fallbackSession: RepairSession = JSON.parse(JSON.stringify(FALLBACK_SESSION));
+  fallbackSession.session_id = sessionId;
+
+  let replyText = "To get started with guided diagnosis and repair, what is your vehicle's **make and model**? (e.g. **2023 Honda Civic**, **2022 Toyota RAV4**, or **Ford F-150**)";
+  let replySpeech = "What is the make and model of your vehicle?";
+  let nextPhase = "CONFIRM_MAKE";
+
+  if (make && model !== "Vehicle") {
+    fallbackSession.vehicle_profile = {
+      ...fallbackSession.vehicle_profile,
+      make,
+      model,
+      year,
+      id: `${make.toLowerCase()}_${model.toLowerCase()}_${year}`,
+      manual_name: `${year} ${make} ${model} Official Owner & Maintenance Manual`
+    };
+    replyText = `Vehicle confirmed: **${year} ${make} ${model}**.\n\nWhat issue or symptom are you experiencing with this vehicle?`;
+    replySpeech = `Vehicle confirmed: ${year} ${make} ${model}. What issue or symptom are you experiencing?`;
+    nextPhase = "ASK_ISSUE";
+  } else if (make) {
+    fallbackSession.vehicle_profile.make = make;
+    replyText = `Understood, **${make}**. What model and year is your ${make}?`;
+    replySpeech = `Understood, ${make}. What model and year is your ${make}?`;
+    nextPhase = "ASK_MODEL_YEAR";
+  } else if (yearMatch) {
+    replyText = `Recorded year **${year}**. What is the **make and model** of your vehicle? (e.g. Honda Civic, Toyota RAV4)`;
+    replySpeech = `Recorded year ${year}. What is the make and model of your vehicle?`;
+    nextPhase = "CONFIRM_MAKE";
+  }
+
+  const typedPhase = nextPhase as DialoguePhase;
+  fallbackSession.dialogue = {
+    ...fallbackSession.dialogue,
+    phase: typedPhase,
+    messages: [
+      { sender: "USER", text: userSpeechOrText, phase: typedPhase, timestamp: new Date().toISOString() },
+      { sender: "AI", text: replyText, speech_text: replySpeech, phase: typedPhase, timestamp: new Date().toISOString() }
+    ]
+  };
+
   return {
-    text: "Vehicle frame captured in camera view. What is the **make or brand** of your vehicle? (e.g. Honda, Ford, BMW, Toyota, Tesla, Chevrolet)",
-    speech_text: "Vehicle frame captured in camera view. What is the make or brand of your vehicle?",
-    phase: "CONFIRM_MAKE",
-    payload: { detected_make: null },
-    session: FALLBACK_SESSION
+    text: replyText,
+    speech_text: replySpeech,
+    phase: nextPhase,
+    payload: { make, model, year },
+    session: fallbackSession
   };
 }
 

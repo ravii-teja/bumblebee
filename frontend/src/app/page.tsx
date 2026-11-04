@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { RepairSession, ComponentObservation, VerificationResult, DialoguePhase } from "@/lib/types";
+import { RepairSession, ComponentObservation, VerificationResult, DialoguePhase, DialogueMessage } from "@/lib/types";
 import { createSession, fetchComponents, verifyStepState, streamConversationTurn, FALLBACK_SESSION, FALLBACK_STEPS } from "@/lib/api";
 import { useCamera } from "@/hooks/useCamera";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
@@ -175,6 +175,22 @@ export default function BumblebeeChamber() {
         const imgFrame = customImageBase64 || undefined;
         let speechPlayed = false;
 
+        // Optimistically show user message in chat immediately
+        const userMsg: DialogueMessage = {
+          sender: "USER",
+          text: userInput,
+          phase: (session.dialogue?.phase || phase) as DialoguePhase,
+          timestamp: new Date().toISOString()
+        };
+        setSession((prev) => ({
+          ...prev,
+          dialogue: {
+            ...prev.dialogue,
+            phase: (prev.dialogue?.phase || phase) as DialoguePhase,
+            messages: [...(prev.dialogue?.messages || []), userMsg]
+          }
+        }));
+
         const res = await streamConversationTurn(
           session.session_id,
           userInput,
@@ -207,11 +223,13 @@ export default function BumblebeeChamber() {
             setSelectedComponent(comps[0]);
           }
         }
+      } catch (err) {
+        console.error("handleTurn conversational error:", err);
       } finally {
         setIsProcessing(false);
       }
     },
-    [session, isProcessing, speakText]
+    [session, isProcessing, phase, speakText]
   );
 
   useEffect(() => {

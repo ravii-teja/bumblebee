@@ -117,7 +117,7 @@ export interface DialogueState {
   reported_issue?: string;
   hypothesis?: DiagnosticHypothesis;
   solution_plan?: RepairProcedure;
-  active_step: number;
+  active_step?: number;
   messages: DialogueMessage[];
 }
 

@@ -205,7 +205,7 @@ def clean_text_of_vehicle(text: str, make: Optional[str] = None, model: Optional
         res = re.sub(rf"\b{re.escape(model)}\b", "", res, flags=re.IGNORECASE)
     if year:
         res = re.sub(rf"\b{year}\b", "", res)
-    res = re.sub(r"\b(?:set|switch|change|add|my|car|is|a|an|the|i|have|drive|vehicle|to|with|has|having|please|for)\b", "", res, flags=re.IGNORECASE)
+    res = re.sub(r"\b(?:set|switch|change|add|ad|my|car|is|a|an|the|i|have|drive|vehicle|to|with|has|having|please|for|and|year|years|model|models|make|makes|brand|type|select|it's|it)\b", "", res, flags=re.IGNORECASE)
     return res.strip(" :,-.")
 
 
@@ -293,6 +293,8 @@ class ConversationalAgentService:
         is_vehicle_intent = any(k in input_lower for k in [
             "switch car", "switch vehicle", "change car", "change vehicle", "add car",
             "add vehicle", "new car", "new vehicle", "set car", "set vehicle",
+            "ad car", "ad vehicle", "car and year", "add car and year", "ad car and year",
+            "vehicle and year", "enter car", "enter vehicle", "car model",
             "i have a", "my car is", "i drive a", "select vehicle", "select car"
         ])
 
@@ -301,11 +303,19 @@ class ConversationalAgentService:
             dialogue.phase = "SCAN_VEHICLE"
             dialogue.confirmed_make = None
             dialogue.detected_make = None
-            text = (
-                "Sure! You can point your camera to scan your car or badge, or tell me your "
-                "vehicle's **make, model, and year** (e.g. '2023 Honda Civic', '2021 Ford F-150')."
-            )
-            speech = "Sure! Point your camera to scan, or tell me your vehicle make, model, and year."
+            if extracted_year:
+                dialogue.year = extracted_year
+                text = (
+                    f"Got year **{extracted_year}**! You can point your camera to scan your car or badge, or tell me your "
+                    f"vehicle's **make and model** (e.g. 'Honda Civic', 'Toyota RAV4', 'Ford F-150')."
+                )
+                speech = f"Got year {extracted_year}! Tell me your vehicle make and model."
+            else:
+                text = (
+                    "Sure! You can point your camera to scan your car or badge, or tell me your "
+                    "vehicle's **make, model, and year** (e.g. '2023 Honda Civic', '2021 Ford F-150')."
+                )
+                speech = "Sure! Point your camera to scan, or tell me your vehicle make, model, and year."
             return text, speech, "SCAN_VEHICLE", {"action": "PROMPT_VEHICLE_SELECT"}
 
         # If user provided make and (model or year) OR model and year OR expressed vehicle switch intent with a make/model
@@ -466,6 +476,16 @@ class ConversationalAgentService:
                     return text, speech, "CONFIRM_MAKE", {"detected_make": None, "detection_meta": detection}
 
             # Non-camera input without explicit make/model recognized
+            if extracted_year and not extracted_make and not extracted_model:
+                dialogue.year = extracted_year
+                text = (
+                    f"Recorded year **{extracted_year}**. What is the **make and model** of your vehicle? "
+                    f"(For example: **Honda Civic**, **Toyota RAV4**, or **Ford F-150**)."
+                )
+                speech = f"Recorded year {extracted_year}. What is the make and model of your vehicle?"
+                dialogue.phase = "CONFIRM_MAKE"
+                return text, speech, "CONFIRM_MAKE", {"year": extracted_year}
+
             embedded_issue = extract_embedded_issue(input_clean)
             if embedded_issue:
                 dialogue.reported_issue = embedded_issue

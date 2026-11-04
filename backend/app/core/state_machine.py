@@ -58,8 +58,53 @@ class RepairStateMachine:
         return session
 
     @classmethod
-    def get_session(cls, session_id: str) -> Optional[RepairSession]:
-        return _SESSION_STORE.get(session_id)
+    def get_session(cls, session_id: str) -> RepairSession:
+        if session_id in _SESSION_STORE:
+            return _SESSION_STORE[session_id]
+
+        # Try to restore session from SQLite database
+        try:
+            from app.db.database import get_db
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT make, model, year, phase, current_step_number, reported_issue FROM sessions WHERE session_id = ?",
+                    (session_id,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    make, model, year, phase, step_num, issue = row
+                    from app.mock_data.rav4_data import create_dynamic_vehicle_profile, create_dynamic_procedure
+                    prof = create_dynamic_vehicle_profile(make=make or "", model=model or "Vehicle", year=year or 2024)
+                    proc = create_dynamic_procedure(prof, issue or "General Inspection")
+                    sess = RepairSession(
+                        session_id=session_id,
+                        vehicle_profile=prof,
+                        procedure=proc,
+                        current_step_number=step_num or 1,
+                        completed_steps=[],
+                        observations=[],
+                        verifications={},
+                        dialogue=DialogueState(
+                            phase=phase or "SCAN_VEHICLE",
+                            detected_make=make if make else None,
+                            confirmed_make=make if make else None,
+                            model=model if model else None,
+                            year=year or 2024,
+                            reported_issue=issue,
+                            messages=[]
+                        )
+                    )
+                    _SESSION_STORE[session_id] = sess
+                    return sess
+        except Exception:
+            pass
+
+        # If session_id is not in memory or DB, dynamically create and register it
+        sess = cls.create_session()
+        sess.session_id = session_id
+        _SESSION_STORE[session_id] = sess
+        return sess
 
     @classmethod
     def advance_step(
